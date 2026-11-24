@@ -5,7 +5,6 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
-import androidx.work.workDataOf
 import io.github.zdyoyoyo.backendquiz.data.prefs.ReminderSettings
 import io.github.zdyoyoyo.backendquiz.domain.reminder.ReminderSchedule
 import java.time.ZonedDateTime
@@ -35,13 +34,9 @@ class ReminderScheduler(
         workManager.enqueueUniquePeriodicWork(WORK_NAME, ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE, request)
     }
 
-    /** 設定頁的「立即測試通知」：馬上執行一次，而且一定會發通知 */
+    /** 設定頁的「立即測試通知」：馬上執行一次 */
     fun testNow() {
-        workManager.enqueue(
-            OneTimeWorkRequestBuilder<ReminderWorker>()
-                .setInputData(workDataOf(ReminderWorker.KEY_FORCE to true))
-                .build()
-        )
+        workManager.enqueue(OneTimeWorkRequestBuilder<ReminderWorker>().build())
     }
 
     companion object {

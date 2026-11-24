@@ -12,7 +12,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import kotlin.test.assertEquals
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @RunWith(RobolectricTestRunner::class)
@@ -39,15 +38,15 @@ class ReminderRunnerTest : RepositoryTestBase() {
         assertTrue("錯題本還有 1 題" in posted.single().text)
     }
 
-    // 今天已經複習完 → 不發通知
+    // 今天已經複習完 → 仍然通知（內容是「完成了」）
     @Test
-    fun `stays quiet when done for today`() = runTest {
+    fun `notifies even when done for today`() = runTest {
         bundled = bankJson(1, q1)
         goToDay(100)
         sync.ensureSeeded()
         practice.recordAnswer(q1, setOf("A"), QuizMode.RANDOM)
-        assertNull(runner().run())
-        assertTrue(posted.isEmpty())
+        runner().run()
+        assertEquals("今天的複習都完成了", posted.single().title)
     }
 
     // 背景檢查時下載到新題庫 → 通知裡附上更新內容，也會觸發首頁提示
@@ -64,13 +63,4 @@ class ReminderRunnerTest : RepositoryTestBase() {
         assertEquals(1, updates.size)
     }
 
-    // 測試按鈕：即使不需要提醒也會發
-    @Test
-    fun `force posts anyway`() = runTest {
-        bundled = bankJson(1, q1)
-        sync.ensureSeeded()
-        practice.recordAnswer(q1, setOf("A"), QuizMode.RANDOM)
-        runner().run(force = true)
-        assertEquals(1, posted.size)
-    }
 }

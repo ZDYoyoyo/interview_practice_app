@@ -18,11 +18,7 @@ class ReminderWorker(context: Context, params: WorkerParameters) : CoroutineWork
             bankSync = container.bankSyncRepository,
             notify = { Notifications.showReminder(applicationContext, it) },
         )
-        runner.run(force = inputData.getBoolean(KEY_FORCE, false))
+        runner.run()
         return Result.success()
-    }
-
-    companion object {
-        const val KEY_FORCE = "force"
     }
 }

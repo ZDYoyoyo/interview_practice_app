@@ -136,8 +136,7 @@ fun SettingsScreen(container: AppContainer, onBack: () -> Unit) {
             }
 
             Text(
-                "Android 為了省電會調整背景工作的時間，實際提醒可能比設定時間晚幾分鐘到十幾分鐘。" +
-                    "沒有待複習題目、而且今天已經練習過時，就不會打擾你。",
+                "Android 為了省電會調整背景工作的時間，實際提醒可能比設定時間晚幾分鐘到十幾分鐘。",
                 style = MaterialTheme.typography.bodySmall,
             )
 

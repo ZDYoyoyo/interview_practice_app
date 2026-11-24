@@ -10,14 +10,14 @@ import io.github.zdyoyoyo.backendquiz.domain.reminder.ReminderPolicy
  * 每日提醒「要做的事」。和 Worker 分開，這樣不需要 WorkManager 也能測試。
  *   1. 順便檢查題庫更新（有新版本會一起寫進提醒）
  *   2. 查今天該複習幾題、今天做了幾題、錯題本幾題
- *   3. 交給 ReminderPolicy 決定要不要提醒、說什麼
+ *   3. 交給 ReminderPolicy 組出通知內容並發送
  */
 class ReminderRunner(
     private val practice: PracticeRepository,
     private val bankSync: BankSyncRepository,
     private val notify: (ReminderMessage) -> Unit,
 ) {
-    suspend fun run(force: Boolean = false): ReminderMessage? {
+    suspend fun run(): ReminderMessage {
         val bankOutcome = try {
             bankSync.ensureSeeded()
             bankSync.syncRemote()
@@ -31,9 +31,8 @@ class ReminderRunner(
             answeredToday = practice.answeredTodayCount(),
             openMistakes = practice.openMistakeCount(),
             bankUpdate = bankUpdate,
-            force = force,
         )
-        if (message != null) notify(message)
+        notify(message)
         return message
     }
 }

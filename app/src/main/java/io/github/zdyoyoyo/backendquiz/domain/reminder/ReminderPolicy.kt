@@ -3,11 +3,12 @@ package io.github.zdyoyoyo.backendquiz.domain.reminder
 data class ReminderMessage(val title: String, val text: String)
 
 /**
- * 決定每日提醒要說什麼，或乾脆不提醒。
+ * 決定每日提醒的內容。每天一定會發一則，內容依情況不同：
  *
- * - 有待複習的題目 → 一定提醒
- * - 沒有待複習、今天也還沒練習 → 提醒做新題目
- * - 沒有待複習、今天已經練習過 → 不打擾（除非有題庫更新要告訴你）
+ * - 有待複習的題目 → 「今天有 N 題該複習」
+ * - 沒有待複習、今天已經練習過 → 「今天的複習都完成了」
+ * - 沒有待複習、今天還沒練習 → 「今天還沒練習」
+ * 有錯題或題庫更新時，會附在內文。
  */
 object ReminderPolicy {
 
@@ -16,10 +17,7 @@ object ReminderPolicy {
         answeredToday: Int,
         openMistakes: Int,
         bankUpdate: String? = null,
-        force: Boolean = false,
-    ): ReminderMessage? {
-        if (!force && dueCount == 0 && answeredToday > 0 && bankUpdate == null) return null
-
+    ): ReminderMessage {
         val title = when {
             dueCount > 0 -> "今天有 $dueCount 題該複習"
             answeredToday > 0 -> "今天的複習都完成了"
@@ -29,7 +27,7 @@ object ReminderPolicy {
             add(
                 when {
                     dueCount > 0 -> "花幾分鐘複習，記得更牢。"
-                    answeredToday > 0 -> "做得好，今天已經練習 $answeredToday 題。"
+                    answeredToday > 0 -> "做得好，今天已經練習 $answeredToday 題，想多練可以做幾題新題目。"
                     else -> "來做幾題後端面試題吧。"
                 }
             )
