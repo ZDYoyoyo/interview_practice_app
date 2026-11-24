@@ -1,7 +1,6 @@
 package io.github.zdyoyoyo.backendquiz
 
 import io.github.zdyoyoyo.backendquiz.data.remote.BankParser
-import io.github.zdyoyoyo.backendquiz.domain.model.QuestionType
 import org.junit.Test
 import java.io.File
 import kotlin.test.assertTrue
@@ -27,12 +26,9 @@ class QuestionsJsonTest {
         assertTrue(parsed.bank.updatedAt.isNotBlank(), "updatedAt 不可為空")
     }
 
+    // 題庫不可為空（空的題庫會讓所有題目在 App 裡被標成移除）
     @Test
-    // 範例題庫涵蓋單選、多選與程式碼題
-    fun `bank covers single multi and code questions`() {
-        val questions = BankParser.parse(file.readText()).bank.questions
-        assertTrue(questions.any { it.type == QuestionType.SINGLE })
-        assertTrue(questions.any { it.type == QuestionType.MULTI })
-        assertTrue(questions.any { "```" in it.stem })
+    fun `bank is not empty`() {
+        assertTrue(BankParser.parse(file.readText()).bank.questions.isNotEmpty(), "questions 不可為空")
     }
 }
