@@ -1,13 +1,17 @@
 package io.github.zdyoyoyo.backendquiz.data.local
 
 import io.github.zdyoyoyo.backendquiz.data.local.entity.MistakeEntity
+import io.github.zdyoyoyo.backendquiz.data.local.entity.QuestionAttemptRow
 import io.github.zdyoyoyo.backendquiz.data.local.entity.QuestionEntity
+import io.github.zdyoyoyo.backendquiz.data.local.entity.ReviewStateEntity
 import io.github.zdyoyoyo.backendquiz.data.remote.OptionDto
 import io.github.zdyoyoyo.backendquiz.domain.bank.HashedQuestion
 import io.github.zdyoyoyo.backendquiz.domain.mistakes.MistakeRecord
 import io.github.zdyoyoyo.backendquiz.domain.model.Question
 import io.github.zdyoyoyo.backendquiz.domain.model.QuestionOption
 import io.github.zdyoyoyo.backendquiz.domain.model.QuestionType
+import io.github.zdyoyoyo.backendquiz.domain.srs.ReviewState
+import io.github.zdyoyoyo.backendquiz.domain.stats.QuestionAttemptStat
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -46,3 +50,16 @@ fun QuestionEntity.toDomain(): Question = Question(
 fun MistakeEntity.toDomain() = MistakeRecord(questionId, wrongCount, correctStreak, mastered, firstWrongAt, lastWrongAt)
 
 fun MistakeRecord.toEntity() = MistakeEntity(questionId, wrongCount, correctStreak, mastered, firstWrongAt, lastWrongAt)
+
+fun ReviewStateEntity.toDomain() =
+    ReviewState(
+        questionId, easiness, intervalDays, repetitions, dueEpochDay, lastReviewEpochDay,
+    )
+
+fun ReviewState.toEntity() =
+    ReviewStateEntity(
+        questionId, easiness, intervalDays, repetitions, dueEpochDay, lastReviewEpochDay,
+    )
+
+fun QuestionAttemptRow.toDomain() =
+    QuestionAttemptStat(questionId, domainCode, total, correct)

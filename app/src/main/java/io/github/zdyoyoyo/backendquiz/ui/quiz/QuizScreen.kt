@@ -20,6 +20,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -51,6 +52,7 @@ import io.github.zdyoyoyo.backendquiz.domain.model.Question
 import io.github.zdyoyoyo.backendquiz.domain.model.QuestionOption
 import io.github.zdyoyoyo.backendquiz.domain.model.QuestionType
 import io.github.zdyoyoyo.backendquiz.domain.quiz.QuizMode
+import io.github.zdyoyoyo.backendquiz.domain.srs.Sm2Scheduler
 import io.github.zdyoyoyo.backendquiz.ui.components.InlineCodeText
 import io.github.zdyoyoyo.backendquiz.ui.components.RichText
 import io.github.zdyoyoyo.backendquiz.ui.theme.LocalQuizColors
@@ -77,7 +79,7 @@ fun QuizScreen(container: AppContainer, onExit: () -> Unit) {
                         when {
                             state.loading -> "載入中"
                             state.finished -> "本輪結束"
-                            else -> "${if (state.mode == QuizMode.MISTAKES) "錯題重做" else "做題"} ${state.index + 1} / ${state.questions.size}"
+                            else -> "${state.mode.title} ${state.index + 1} / ${state.questions.size}"
                         },
                     )
                 },
@@ -94,6 +96,8 @@ fun QuizScreen(container: AppContainer, onExit: () -> Unit) {
                         LinearProgressIndicator(
                             progress = { (state.index + 1f) / state.questions.size },
                             modifier = Modifier.fillMaxWidth(),
+                            gapSize = 0.dp,
+                            drawStopIndicator = {},
                         )
                         Column(
                             modifier = Modifier.weight(1f).verticalScroll(scroll).padding(16.dp),
@@ -110,7 +114,15 @@ fun QuizScreen(container: AppContainer, onExit: () -> Unit) {
                                     onClick = { vm.toggleOption(option.key) },
                                 )
                             }
-                            state.outcome?.let { ResultPanel(q, it) }
+                            state.outcome?.let { outcome ->
+                                ResultPanel(
+                                    q = q,
+                                    outcome = outcome,
+                                    rating = state.rating,
+                                    today = container.practiceRepository.currentEpochDay(),
+                                    onRate = vm::rate,
+                                )
+                            }
                         }
                         BottomAction(state, onSubmit = vm::submit, onNext = vm::next)
                     }
@@ -179,7 +191,7 @@ private fun OptionRow(
 }
 
 @Composable
-private fun ResultPanel(q: Question, outcome: AnswerOutcome) {
+private fun ResultPanel(q: Question, outcome: AnswerOutcome, rating: Int, today: Long, onRate: (Int) -> Unit) {
     val colors = LocalQuizColors.current
     Surface(
         shape = RoundedCornerShape(12.dp),
@@ -198,11 +210,34 @@ private fun ResultPanel(q: Question, outcome: AnswerOutcome) {
                 mistake != null && !outcome.correct -> Text("已收錄到錯題本（累計答錯 ${mistake.wrongCount} 次）")
                 mistake != null -> Text("錯題本連對 ${mistake.correctStreak} / ${MistakePolicy.STREAK_TO_MASTER}")
             }
+            Text("下次複習：${describeDue(outcome.review.dueEpochDay - today)}")
+        }
+    }
+    // 同一天已經複習過的題目，SM-2 排程不會再變動，自評沒有意義
+    val reviewedEarlierToday = outcome.reviewBefore?.lastReviewEpochDay == today
+    if (outcome.correct && reviewedEarlierToday) {
+        Text("今天已經複習過這題，排程維持不變", style = MaterialTheme.typography.bodySmall)
+    } else if (outcome.correct) {
+        Text("答得如何？（影響下次複習時間）", style = MaterialTheme.typography.labelLarge)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf(
+                Sm2Scheduler.QUALITY_EASY to "秒答",
+                Sm2Scheduler.QUALITY_GOOD to "想了一下",
+                Sm2Scheduler.QUALITY_HARD to "猜對",
+            ).forEach { (quality, label) ->
+                FilterChip(selected = rating == quality, onClick = { onRate(quality) }, label = { Text(label) })
+            }
         }
     }
     HorizontalDivider()
     Text("解析", style = MaterialTheme.typography.titleMedium)
     RichText(q.explanation, style = MaterialTheme.typography.bodyMedium)
+}
+
+private fun describeDue(days: Long): String = when {
+    days <= 0 -> "今天"
+    days == 1L -> "明天"
+    else -> "$days 天後"
 }
 
 @Composable
@@ -233,7 +268,11 @@ private fun Summary(state: QuizUiState, onExit: () -> Unit) {
     ) {
         if (state.questions.isEmpty()) {
             Text(
-                if (state.mode == QuizMode.MISTAKES) "錯題本是空的 👍" else "這個範圍沒有題目",
+                when (state.mode) {
+                    QuizMode.MISTAKES -> "錯題本是空的 👍"
+                    QuizMode.REVIEW -> "今天沒有要複習的題目 🎉"
+                    else -> "這個範圍沒有題目"
+                },
                 style = MaterialTheme.typography.titleLarge,
             )
         } else {

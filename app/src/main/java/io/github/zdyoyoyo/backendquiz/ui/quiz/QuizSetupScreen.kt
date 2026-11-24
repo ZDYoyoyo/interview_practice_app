@@ -30,13 +30,14 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import io.github.zdyoyoyo.backendquiz.AppContainer
 import io.github.zdyoyoyo.backendquiz.domain.model.Domain
+import io.github.zdyoyoyo.backendquiz.domain.quiz.QuizMode
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun QuizSetupScreen(
     container: AppContainer,
     onBack: () -> Unit,
-    onStart: (domains: Set<String>, count: Int) -> Unit,
+    onStart: (mode: QuizMode, domains: Set<String>, count: Int) -> Unit,
 ) {
     val vm: QuizSetupViewModel = viewModel(
         factory = viewModelFactory { initializer { QuizSetupViewModel(container.practiceRepository) } },
@@ -44,6 +45,7 @@ fun QuizSetupScreen(
     val counts by vm.domainCounts.collectAsStateWithLifecycle()
     val selected by vm.selected.collectAsStateWithLifecycle()
     val count by vm.count.collectAsStateWithLifecycle()
+    val mode by vm.mode.collectAsStateWithLifecycle()
 
     // 依 enum 順序列出「題庫裡有題目」的領域；未知代碼會被歸到 OTHER
     val available = Domain.entries.mapNotNull { domain ->
@@ -67,6 +69,25 @@ fun QuizSetupScreen(
             modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            Text("出題方式", style = MaterialTheme.typography.titleMedium)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(
+                    selected = mode == QuizMode.RANDOM,
+                    onClick = { vm.setMode(QuizMode.RANDOM) },
+                    label = { Text("隨機") },
+                )
+                FilterChip(
+                    selected = mode == QuizMode.WEAKNESS,
+                    onClick = { vm.setMode(QuizMode.WEAKNESS) },
+                    label = { Text("依弱點") },
+                )
+            }
+            Text(
+                if (mode == QuizMode.RANDOM) "每題機會相同"
+                else "正確率低的領域、常答錯的題目會更常出現",
+                style = MaterialTheme.typography.bodySmall,
+            )
+
             Text("領域（不選 = 全部）", style = MaterialTheme.typography.titleMedium)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterChip(selected = selected.isEmpty(), onClick = vm::selectAll, label = { Text("全部") })
@@ -88,9 +109,9 @@ fun QuizSetupScreen(
                 }
             }
 
-            Text("可出題：$poolSize 題（隨機抽出）", style = MaterialTheme.typography.bodyMedium)
+            Text("可出題：$poolSize 題", style = MaterialTheme.typography.bodyMedium)
             Button(
-                onClick = { onStart(selected, count) },
+                onClick = { onStart(mode, selected, count) },
                 enabled = poolSize > 0,
                 modifier = Modifier.fillMaxWidth(),
             ) { Text("開始") }

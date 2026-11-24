@@ -3,6 +3,7 @@ package io.github.zdyoyoyo.backendquiz.ui.quiz
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.zdyoyoyo.backendquiz.data.repository.PracticeRepository
+import io.github.zdyoyoyo.backendquiz.domain.quiz.QuizMode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -22,6 +23,10 @@ class QuizSetupViewModel(practice: PracticeRepository) : ViewModel() {
     private val _count = MutableStateFlow(10)
     val count: StateFlow<Int> = _count.asStateFlow()
 
+    private val _mode = MutableStateFlow(QuizMode.RANDOM)
+    val mode: StateFlow<QuizMode> = _mode.asStateFlow()
+
+    fun setMode(value: QuizMode) { _mode.value = value }
     fun toggle(code: String) = _selected.update { if (code in it) it - code else it + code }
     fun selectAll() { _selected.value = emptySet() }
     fun setCount(value: Int) { _count.value = value }
