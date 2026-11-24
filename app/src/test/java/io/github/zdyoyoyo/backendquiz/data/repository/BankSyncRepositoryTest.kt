@@ -110,4 +110,23 @@ class BankSyncRepositoryTest : RepositoryTestBase() {
         assertEquals(5, sync.meta.first()!!.version)
         assertEquals(2, practice.observeActiveCount().first())
     }
+
+    // 題庫更新提示：只有「更新」才觸發，第一次初始化不算
+    @Test
+    fun `update callback fires on update but not on first seed`() = runTest {
+        bundled = bankJson(1, q1, q2)
+        sync.ensureSeeded()
+        assertTrue(updates.isEmpty())
+
+        remote.next = FetchResult.Fetched(bankJson(2, q1.copy(stem = "改"), q3), etag = null)
+        sync.syncRemote()
+        val notice = updates.single().toNotice()!!
+        assertEquals(1, notice.fromVersion)
+        assertEquals(2, notice.toVersion)
+        assertEquals("題庫已更新到 v2：新增 1 題、更新 1 題、移除 1 題", notice.message())
+
+        // 版本沒變 → 不觸發
+        sync.syncRemote()
+        assertEquals(1, updates.size)
+    }
 }

@@ -6,7 +6,7 @@
 - 下載後存在手機本機，**離線也能作答**；首次安裝時使用打包在 App 裡的內建題庫
 - 作答紀錄、錯題本、SM-2 複習排程都只存在手機（Room / SQLite）
 
-> 開發進度：✅ 第一階段「做題＋錯題本」　✅ 第二階段「SM-2 複習＋統計」　⬜ 第三階段「每日提醒＋題庫更新提示」
+> 開發進度：✅ 第一階段「做題＋錯題本」　✅ 第二階段「SM-2 複習＋統計」　✅ 第三階段「每日提醒＋題庫更新提示」
 
 ---
 
@@ -19,7 +19,8 @@
 5. [本機建置與測試](#本機建置與測試)
 6. [題庫同步機制](#題庫同步機制)
 7. [學習機制：錯題本、SM-2、弱點與統計](#學習機制錯題本sm-2弱點與統計)
-8. [資料庫版本與 Migration](#資料庫版本與-migration)
+8. [每日提醒與題庫更新提示](#每日提醒與題庫更新提示)
+9. [資料庫版本與 Migration](#資料庫版本與-migration)
 
 ---
 
@@ -42,6 +43,8 @@ Room（SQLite）
 | UI | Jetpack Compose + MVVM | 官方主推；分層和 Spring 的 Controller → Service → Repository 相似 |
 | DI | 手動（`AppContainer`） | 沒有註解魔法，所有相依關係一眼看得到 |
 | 資料庫 | Room | 編譯期檢查 SQL；概念接近 JPA / MyBatis |
+| 設定 | DataStore (Preferences) | 提醒時間、題庫更新提示等小量設定；非同步、以 Flow 讀取 |
+| 背景工作 | WorkManager | 每日提醒；App 沒開、重開機後都會照排程執行 |
 | 網路 | OkHttp | 只有一個 GET，不需要 Retrofit |
 | JSON | kotlinx.serialization | 正確處理 Kotlin null 安全與預設值 |
 | 測試 | JUnit4 + Robolectric | 核心邏輯是純 JVM 測試；Room 用 Robolectric 的記憶體資料庫測試，不需要模擬器 |
@@ -70,15 +73,18 @@ Room（SQLite）
         │   │   ├── quiz/           AnswerChecker、QuestionPicker（隨機／依弱點）、QuizMode
         │   │   ├── mistakes/       MistakePolicy（錯題本規則）
         │   │   ├── srs/            Sm2Scheduler（間隔複習排程）
-        │   │   └── stats/          StatsCalculator（各領域正確率、最弱領域）
+        │   │   ├── stats/          StatsCalculator（各領域正確率、最弱領域）
+        │   │   └── reminder/       ReminderSchedule（下次提醒時間）、ReminderPolicy（要不要提醒、說什麼）
         │   ├── data/
         │   │   ├── remote/         BankParser（解析 JSON）、BankRemoteSource（OkHttp 下載）
         │   │   ├── local/          AppDatabase、entity/、dao/、Mappers
+        │   │   ├── prefs/          SettingsStore（DataStore：提醒設定、題庫更新提示）
         │   │   └── repository/     BankSyncRepository、PracticeRepository
         │   └── ui/
         │       ├── components/     RichText（程式碼區塊：等寬、不換行、可水平捲動）
         │       ├── text/           TextSegments（把文字切成一般文字／程式碼）
-        │       ├── navigation/ home/ quiz/ mistakes/ stats/ theme/
+        │       ├── navigation/ home/ quiz/ mistakes/ stats/ settings/ theme/
+        │   └── notify/             ReminderWorker、ReminderRunner、ReminderScheduler、Notifications
         └── test/                   # 單元測試（見下方）
 ```
 
@@ -223,7 +229,7 @@ Room（SQLite）
 
 測試報告：`app/build/reports/tests/testDebugUnitTest/index.html`
 
-> 第一次跑 Robolectric 測試時，會從 Maven Central 下載約 150MB 的 Android 系統 jar，之後就會使用快取。
+> 第一次跑測試時，Gradle 會下載 Robolectric 需要的 Android 系統 jar（SDK 34、35 各約 150MB，優先從 Google 的 Maven Central 鏡像下載），之後使用 Gradle 快取。Robolectric 以離線模式執行，測試期間不會再連網下載。
 
 ### 測試涵蓋範圍
 
@@ -239,6 +245,12 @@ Room（SQLite）
 | `StatsCalculatorTest` | 各領域正確率、最弱 3 個領域的門檻與排序 |
 | `QuestionPickerTest` | 依弱點加權：弱點題被抽中的機率明顯較高、不重複 |
 | `MigrationTest` | 資料庫 v1 → v2 升級後舊紀錄保留、已答題目補進排程 |
+| `ReminderScheduleTest` | 下一次提醒時間（含跨日、日光節約時間） |
+| `ReminderPolicyTest` | 何時提醒、何時不打擾、通知文字 |
+| `BankUpdateNoticeTest` | 更新提示文字、多次更新合併 |
+| `SettingsStoreTest` | DataStore 讀寫、提示合併與清除 |
+| `ReminderRunnerTest` | 背景提醒整合：到期題數、今天已完成不通知、附帶題庫更新 |
+| `ReminderSchedulerTest` | WorkManager 排程建立、更新、取消 |
 | `TextSegmentsTest` | 程式碼區塊與行內程式碼的切割 |
 | `QuestionsJsonTest` | **repo 裡真正的題庫檔**是否完全合法 |
 | `BankSyncRepositoryTest` | 題庫更新後，舊的作答紀錄與錯題仍對得上（Room＋Robolectric） |
@@ -301,6 +313,31 @@ App 啟動
 ### 統計
 - 各領域正確率（包含已被題庫移除的題目的歷史紀錄）
 - 最弱 3 個領域：作答至少 5 次、且不是全對的領域，正確率由低到高排序；點「練習」會用依弱點模式出該領域的題目
+
+---
+
+## 每日提醒與題庫更新提示
+
+### 每日提醒
+- 在 App 右上角 ⚙ 設定中開啟，可選時間（預設 20:00）。Android 13 以上會詢問通知權限
+- 使用 WorkManager 的每日週期工作；每次開 App 會依設定重新排程，校正長期誤差。Android 省電機制可能讓實際時間晚幾分鐘到十幾分鐘
+- 提醒時也會順便檢查題庫更新
+- 通知內容：
+
+| 情況 | 通知 |
+|---|---|
+| 有待複習題目 | 「今天有 N 題該複習」，附錯題本題數 |
+| 沒有待複習、今天還沒練習 | 「今天還沒練習」 |
+| 沒有待複習、今天已經練習過 | 「今天的複習都完成了」 |
+
+- 每天一定會發一則通知；有錯題或題庫更新時附在內文
+- 設定頁的「立即測試通知」會馬上執行一次
+
+### 題庫更新提示
+- 不管是開 App 時還是背景提醒時下載到新版本，都會記錄「新增 / 更新 / 移除 / 格式錯誤略過」的題數
+- 首頁上方顯示提示卡，例如「題庫已更新到 v3：新增 5 題、更新 2 題」，按「知道了」關閉
+- 還沒看提示又再更新一次時，會合併成一則（版本範圍從最舊到最新）
+- 第一次安裝時的初始化不算更新，不會顯示提示
 
 ---
 

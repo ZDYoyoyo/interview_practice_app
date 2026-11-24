@@ -8,6 +8,7 @@ import io.github.zdyoyoyo.backendquiz.data.remote.BankParser
 import io.github.zdyoyoyo.backendquiz.data.remote.BankRemoteSource
 import io.github.zdyoyoyo.backendquiz.data.remote.FetchResult
 import io.github.zdyoyoyo.backendquiz.domain.bank.BankMerger
+import io.github.zdyoyoyo.backendquiz.domain.bank.BankUpdateNotice
 import io.github.zdyoyoyo.backendquiz.domain.bank.BankVersionPolicy
 import io.github.zdyoyoyo.backendquiz.domain.bank.LocalQuestionRef
 import io.github.zdyoyoyo.backendquiz.domain.bank.Severity
@@ -25,7 +26,12 @@ sealed interface SyncOutcome {
         val retired: Int,
         /** 格式有問題、被跳過的題目數 */
         val skipped: Int,
-    ) : SyncOutcome
+    ) : SyncOutcome {
+        /** 第一次初始化（fromVersion = null）不算「更新」，不產生提示 */
+        fun toNotice(): BankUpdateNotice? = fromVersion?.let {
+            BankUpdateNotice(it, toVersion, added, updated, retired, skipped)
+        }
+    }
 
     data class UpToDate(val version: Int) : SyncOutcome
     data class Failed(val reason: String) : SyncOutcome
@@ -42,6 +48,8 @@ class BankSyncRepository(
     private val remote: BankRemoteSource,
     private val loadBundledBank: suspend () -> String,
     private val clock: () -> Long = System::currentTimeMillis,
+    /** 題庫「更新」（不含第一次初始化）成功後呼叫，用來記錄更新提示 */
+    private val onUpdated: suspend (SyncOutcome.Updated) -> Unit = {},
 ) {
     private val mutex = Mutex() // 避免內建初始化與遠端同步同時寫入
     private val metaDao = db.bankMetaDao()
@@ -103,7 +111,7 @@ class BankSyncRepository(
                 )
             )
         }
-        return SyncOutcome.Updated(
+        val outcome = SyncOutcome.Updated(
             fromVersion = local?.version,
             toVersion = bank.version,
             added = plan.addedIds.size + plan.reactivatedIds.size,
@@ -111,5 +119,7 @@ class BankSyncRepository(
             retired = plan.retiredIds.size,
             skipped = parsed.issues.count { it.severity == Severity.ERROR },
         )
+        if (outcome.fromVersion != null) onUpdated(outcome)
+        return outcome
     }
 }

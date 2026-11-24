@@ -27,6 +27,9 @@ abstract class RepositoryTestBase {
     /** 目前時間（毫秒）。用 UTC 計算日期，DAY 的整數倍就是「第幾天的 00:00」 */
     protected var now = 1_000L
 
+    /** onUpdated 回呼收到的更新（用來驗證題庫更新提示） */
+    protected val updates = mutableListOf<SyncOutcome.Updated>()
+
     protected lateinit var sync: BankSyncRepository
     protected lateinit var practice: PracticeRepository
 
@@ -37,7 +40,7 @@ abstract class RepositoryTestBase {
         db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), AppDatabase::class.java)
             .allowMainThreadQueries()
             .build()
-        sync = BankSyncRepository(db, remote, loadBundledBank = { bundled }, clock = { now })
+        sync = BankSyncRepository(db, remote, loadBundledBank = { bundled }, clock = { now }, onUpdated = { updates += it })
         practice = PracticeRepository(db, clock = { now }, zone = { ZoneOffset.UTC })
     }
 

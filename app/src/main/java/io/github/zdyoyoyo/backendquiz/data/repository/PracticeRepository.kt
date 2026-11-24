@@ -18,6 +18,7 @@ import io.github.zdyoyoyo.backendquiz.domain.stats.StatsSummary
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 
 data class AnswerOutcome(
@@ -55,6 +56,17 @@ class PracticeRepository(
     fun observeActiveCount(): Flow<Int> = questionDao.observeActiveCount()
 
     fun observeDueCount(today: Long): Flow<Int> = reviewDao.observeDueCount(today)
+
+    // ---- 給背景提醒用的一次性查詢（Worker 不需要持續訂閱）----
+    suspend fun dueCountToday(): Int = reviewDao.dueCount(currentEpochDay())
+
+    suspend fun openMistakeCount(): Int = mistakeDao.openCount()
+
+    /** 今天（手機時區 00:00 起）作答了幾次 */
+    suspend fun answeredTodayCount(): Int {
+        val startOfDay = LocalDate.ofEpochDay(currentEpochDay()).atStartOfDay(zone()).toInstant().toEpochMilli()
+        return attemptDao.countSince(startOfDay)
+    }
 
     fun observeStats(): Flow<StatsSummary> =
         attemptDao.observeQuestionStats().map { rows -> StatsCalculator.summarize(rows.map { it.toDomain() }) }
