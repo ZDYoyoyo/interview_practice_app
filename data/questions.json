@@ -1,6 +1,6 @@
 {
-  "version": 3,
-  "updatedAt": "2026-11-24T10:22:07Z",
+  "version": 4,
+  "updatedAt": "2026-11-24T10:50:00Z",
   "questions": [
     {
       "id": "redis-cache-trio-001",
@@ -251,36 +251,6 @@
       "difficulty": 2
     },
     {
-      "id": "redis-ds-001",
-      "domain": "redis_mq",
-      "sourceTitle": "Redis 常用資料結構；即時積分排行榜用哪一種、為什麼",
-      "type": "single",
-      "stem": "要做一個「即時積分排行榜，顯示前 10 名」，最適合用 Redis 的哪種資料結構？",
-      "options": [
-        {
-          "key": "A",
-          "text": "String"
-        },
-        {
-          "key": "B",
-          "text": "List"
-        },
-        {
-          "key": "C",
-          "text": "Set"
-        },
-        {
-          "key": "D",
-          "text": "Sorted Set（ZSet）"
-        }
-      ],
-      "answer": [
-        "D"
-      ],
-      "explanation": "ZSet 每個成員帶一個分數，寫入時就自動排序。\n```bash\nZINCRBY rank 50 user:42\nZREVRANGE rank 0 9 WITHSCORES\n```\n更新與查名次都是 O(log N)。用 DB 每次 `ORDER BY score DESC LIMIT 10`，分數一直變時撐不住。",
-      "difficulty": 1
-    },
-    {
       "id": "linux-cpu-001",
       "domain": "linux_deploy",
       "sourceTitle": "線上 Java 服務 CPU 100%，怎麼找出是哪個程序、哪段程式碼造成",
@@ -400,38 +370,6 @@
         "D"
       ],
       "explanation": "不要一查到就強制砍：如果是別的重要服務，改用別的 port。\n`kill` 會讓 Spring Boot 把手上的請求處理完再關；`kill -9` 是直接終止。\n根本解法：部署流程先停舊版再啟新版。",
-      "difficulty": 1
-    },
-    {
-      "id": "linux-docker-001",
-      "domain": "linux_deploy",
-      "sourceTitle": "Docker image 與 container 差在哪；用 Docker 部署 Spring Boot 的好處",
-      "type": "multi",
-      "stem": "關於 Docker，下列哪些敘述正確？",
-      "options": [
-        {
-          "key": "A",
-          "text": "image 像 class，container 像 new 出來的物件"
-        },
-        {
-          "key": "B",
-          "text": "一個 image 只能跑出一個 container"
-        },
-        {
-          "key": "C",
-          "text": "開發、測試、正式用同一個 image，可避免「我電腦可以跑」的問題"
-        },
-        {
-          "key": "D",
-          "text": "同一台機器上，不同服務可以各用不同版本的 JDK 而不衝突"
-        }
-      ],
-      "answer": [
-        "A",
-        "C",
-        "D"
-      ],
-      "explanation": "一個 image 可以跑出很多個 container，流量大時多開幾個就能擴充。\n其他好處：部署與回滾快（換 image 版本號）。\n注意：精簡的 JRE 映像可能沒有 `jstack`、`jmap`。",
       "difficulty": 1
     },
     {
