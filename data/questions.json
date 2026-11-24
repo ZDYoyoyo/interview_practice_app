@@ -1,0 +1,469 @@
+{
+  "version": 1,
+  "updatedAt": "2026-11-24T00:00:00Z",
+  "questions": [
+    {
+      "id": "java-string-eq-001",
+      "domain": "java_basics",
+      "sourceTitle": "String 的 == 與 equals 差異",
+      "type": "single",
+      "stem": "下列程式的輸出為何？\n```java\nString a = \"hello\";\nString b = new String(\"hello\");\nString c = \"hel\" + \"lo\";\nSystem.out.println((a == b) + \" \" + (a == c) + \" \" + a.equals(b));\n```",
+      "options": [
+        {
+          "key": "A",
+          "text": "true true true"
+        },
+        {
+          "key": "B",
+          "text": "false true true"
+        },
+        {
+          "key": "C",
+          "text": "false false true"
+        },
+        {
+          "key": "D",
+          "text": "true false true"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "`\"hel\" + \"lo\"` 是編譯期常數，編譯器會直接摺疊成 `\"hello\"`，和 `a` 指向字串常數池裡同一個物件，所以 `a == c` 為 true。\n`new String(\"hello\")` 一定會在 heap 建立新物件，所以 `a == b` 為 false；`equals` 比較內容，為 true。\n注意：若是 `String s = \"hel\"; String d = s + \"lo\";`（含變數），就會在執行期用 StringBuilder 產生新物件，`a == d` 為 false。",
+      "difficulty": 1
+    },
+    {
+      "id": "java-hashmap-001",
+      "domain": "java_basics",
+      "sourceTitle": "HashMap 的底層實作",
+      "type": "multi",
+      "stem": "關於 JDK 8 的 `HashMap`，下列哪些敘述正確？",
+      "options": [
+        {
+          "key": "A",
+          "text": "同一個 bucket 的鏈結串列長度達到 8，且陣列容量至少 64 時，會轉成紅黑樹"
+        },
+        {
+          "key": "B",
+          "text": "`HashMap` 是執行緒安全的"
+        },
+        {
+          "key": "C",
+          "text": "允許一個 `null` key"
+        },
+        {
+          "key": "D",
+          "text": "預設負載因子（load factor）是 0.75"
+        },
+        {
+          "key": "E",
+          "text": "迭代順序與插入順序相同"
+        }
+      ],
+      "answer": [
+        "A",
+        "C",
+        "D"
+      ],
+      "explanation": "- A 正確：容量小於 64 時會優先擴容而不是樹化。\n- B 錯誤：多執行緒請用 `ConcurrentHashMap`。\n- C 正確：`null` key 的 hash 固定為 0。\n- D 正確：元素數超過「容量 × 0.75」就擴容為兩倍。\n- E 錯誤：需要插入順序請用 `LinkedHashMap`。",
+      "difficulty": 2
+    },
+    {
+      "id": "jvm-volatile-001",
+      "domain": "java_concurrency_jvm",
+      "sourceTitle": "volatile 的作用與限制",
+      "type": "single",
+      "stem": "兩個執行緒各自執行下面的迴圈 10000 次，結束後 `count` 的值為何？\n```java\nstatic volatile int count = 0;\n\n// 每個執行緒：\nfor (int i = 0; i < 10_000; i++) {\n    count++;\n}\n```",
+      "options": [
+        {
+          "key": "A",
+          "text": "一定是 20000"
+        },
+        {
+          "key": "B",
+          "text": "可能小於 20000"
+        },
+        {
+          "key": "C",
+          "text": "可能大於 20000"
+        },
+        {
+          "key": "D",
+          "text": "編譯錯誤，volatile 不能用在 int"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "`volatile` 只保證「可見性」與「禁止指令重排」，不保證原子性。\n`count++` 實際上是「讀 → 加一 → 寫」三步，兩個執行緒可能讀到同一個值後各自寫回，造成遺失更新。\n要保證結果正確，可以改用 `AtomicInteger.incrementAndGet()`、`LongAdder`，或用 `synchronized` 包住。",
+      "difficulty": 2
+    },
+    {
+      "id": "jvm-threadpool-001",
+      "domain": "java_concurrency_jvm",
+      "sourceTitle": "ThreadPoolExecutor 的任務提交流程",
+      "type": "multi",
+      "stem": "關於 `ThreadPoolExecutor` 提交任務的流程，下列哪些正確？",
+      "options": [
+        {
+          "key": "A",
+          "text": "執行緒數小於 corePoolSize 時，即使有閒置執行緒，也會建立新執行緒處理任務"
+        },
+        {
+          "key": "B",
+          "text": "佇列已滿且執行緒數小於 maximumPoolSize 時，會建立非核心執行緒"
+        },
+        {
+          "key": "C",
+          "text": "任務一律先放進佇列，佇列滿了才建立核心執行緒"
+        },
+        {
+          "key": "D",
+          "text": "使用無界的 `LinkedBlockingQueue` 時，maximumPoolSize 實際上不會生效"
+        }
+      ],
+      "answer": [
+        "A",
+        "B",
+        "D"
+      ],
+      "explanation": "流程是：核心執行緒 → 佇列 → 非核心執行緒（到 max）→ 拒絕策略。\n- C 錯誤：順序是先建立核心執行緒，滿了才進佇列。\n- D 正確：無界佇列永遠不會滿，所以不會走到「建立非核心執行緒」那一步，這也是 `Executors.newFixedThreadPool` 可能造成 OOM 的原因。",
+      "difficulty": 2
+    },
+    {
+      "id": "jvm-gc-roots-001",
+      "domain": "java_concurrency_jvm",
+      "sourceTitle": "JVM 垃圾回收：可達性分析",
+      "type": "single",
+      "stem": "可達性分析中，下列何者「不是」GC Roots？",
+      "options": [
+        {
+          "key": "A",
+          "text": "已載入類別的靜態欄位所引用的物件"
+        },
+        {
+          "key": "B",
+          "text": "執行中方法的堆疊框（stack frame）裡的區域變數所引用的物件"
+        },
+        {
+          "key": "C",
+          "text": "只被 `WeakReference` 引用的物件"
+        },
+        {
+          "key": "D",
+          "text": "JNI（native 方法）所引用的物件"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "GC Roots 包括：虛擬機器堆疊中的區域變數、方法區的類別靜態屬性與常數、JNI 引用、被同步鎖持有的物件等。\n只被弱引用指向的物件不是 root，而且下一次 GC 就會被回收，這是 `WeakHashMap`、`ThreadLocalMap` 的 Entry 設計的基礎。",
+      "difficulty": 2
+    },
+    {
+      "id": "spring-tx-self-invoke-001",
+      "domain": "spring",
+      "sourceTitle": "@Transactional 失效與回滾規則",
+      "type": "single",
+      "stem": "Controller 呼叫 `orderService.placeOrder()`，`saveOrder()` 會在交易中執行嗎？\n```java\n@Service\npublic class OrderService {\n\n    public void placeOrder() {\n        // ... 其他邏輯\n        this.saveOrder();\n    }\n\n    @Transactional\n    public void saveOrder() {\n        orderRepository.save(new Order());\n        throw new RuntimeException(\"boom\");\n    }\n}\n```",
+      "options": [
+        {
+          "key": "A",
+          "text": "會，RuntimeException 會讓交易回滾"
+        },
+        {
+          "key": "B",
+          "text": "不會，因為是同一個類別內部呼叫，繞過了 Spring 的代理"
+        },
+        {
+          "key": "C",
+          "text": "只有加上 `rollbackFor = Exception.class` 才會"
+        },
+        {
+          "key": "D",
+          "text": "只有 checked exception 才會觸發交易"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "Spring 的 `@Transactional` 是靠 AOP 代理實作的：外部呼叫進入的是代理物件，代理才會開啟交易。\n`this.saveOrder()` 直接呼叫目標物件本身，不經過代理，所以註解完全不生效，`save` 也不會回滾。\n解法：把 `saveOrder` 移到另一個 Bean、注入自己（`@Lazy` self injection），或用 `TransactionTemplate` 以程式控制交易。",
+      "difficulty": 2
+    },
+    {
+      "id": "spring-tx-rollback-001",
+      "domain": "spring",
+      "sourceTitle": "@Transactional 失效與回滾規則",
+      "type": "multi",
+      "stem": "關於 `@Transactional` 的回滾規則，下列哪些正確？",
+      "options": [
+        {
+          "key": "A",
+          "text": "拋出 `RuntimeException` 會回滾"
+        },
+        {
+          "key": "B",
+          "text": "拋出 checked exception（例如 `IOException`）會回滾"
+        },
+        {
+          "key": "C",
+          "text": "拋出 `Error` 會回滾"
+        },
+        {
+          "key": "D",
+          "text": "設定 `rollbackFor = Exception.class` 後，拋出 checked exception 也會回滾"
+        }
+      ],
+      "answer": [
+        "A",
+        "C",
+        "D"
+      ],
+      "explanation": "預設只對 unchecked exception（`RuntimeException` 及其子類）和 `Error` 回滾。\nchecked exception 預設會「提交」交易，這是常見的坑，所以很多團隊統一寫 `@Transactional(rollbackFor = Exception.class)`。",
+      "difficulty": 1
+    },
+    {
+      "id": "db-index-leftmost-001",
+      "domain": "database",
+      "sourceTitle": "聯合索引與最左前綴原則",
+      "type": "single",
+      "stem": "已建立以下索引。在 MySQL InnoDB 的一般情況下（不考慮 8.0 的 Index Skip Scan），哪個查詢「無法」利用這個索引？\n```sql\nCREATE INDEX idx_abc ON t (a, b, c);\n```",
+      "options": [
+        {
+          "key": "A",
+          "text": "`WHERE a = 1 AND b = 2`"
+        },
+        {
+          "key": "B",
+          "text": "`WHERE a = 1`"
+        },
+        {
+          "key": "C",
+          "text": "`WHERE b = 2 AND c = 3`"
+        },
+        {
+          "key": "D",
+          "text": "`WHERE a = 1 AND b = 2 AND c = 3`"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "聯合索引的 B+ 樹先依 `a` 排序，`a` 相同才依 `b`、再依 `c`。\n沒有 `a` 的條件時，`b` 在整棵樹裡不是有序的，無法用索引定位，只能全表或全索引掃描。\nWHERE 中條件的書寫順序不重要，優化器會自動調整，關鍵是有沒有從最左欄位開始連續使用。",
+      "difficulty": 1
+    },
+    {
+      "id": "db-isolation-001",
+      "domain": "database",
+      "sourceTitle": "交易隔離級別",
+      "type": "multi",
+      "stem": "關於交易隔離級別，下列哪些正確？",
+      "options": [
+        {
+          "key": "A",
+          "text": "InnoDB 的預設隔離級別是 REPEATABLE READ"
+        },
+        {
+          "key": "B",
+          "text": "READ COMMITTED 可能發生不可重複讀（non-repeatable read）"
+        },
+        {
+          "key": "C",
+          "text": "READ UNCOMMITTED 可以避免髒讀（dirty read）"
+        },
+        {
+          "key": "D",
+          "text": "SERIALIZABLE 的並行效能最好"
+        }
+      ],
+      "answer": [
+        "A",
+        "B"
+      ],
+      "explanation": "四個級別由低到高：READ UNCOMMITTED（有髒讀）→ READ COMMITTED（避免髒讀，仍有不可重複讀）→ REPEATABLE READ → SERIALIZABLE（最嚴格、並行效能最差）。\nInnoDB 在 REPEATABLE READ 下用 MVCC 加上 next-key lock，大部分情況也能避免幻讀。",
+      "difficulty": 1
+    },
+    {
+      "id": "redis-cache-penetration-001",
+      "domain": "redis_mq",
+      "sourceTitle": "快取穿透、擊穿、雪崩",
+      "type": "single",
+      "stem": "大量請求查詢「資料庫裡根本不存在」的 key，每次都打到資料庫（快取穿透）。下列哪個是最直接的解法？",
+      "options": [
+        {
+          "key": "A",
+          "text": "用布隆過濾器（Bloom Filter）先擋掉不存在的 key，或把空結果也快取一段短時間"
+        },
+        {
+          "key": "B",
+          "text": "把各個 key 的過期時間加上隨機值"
+        },
+        {
+          "key": "C",
+          "text": "用互斥鎖，只讓一個請求去重建快取"
+        },
+        {
+          "key": "D",
+          "text": "增加 Redis 的記憶體"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "- 穿透：查不存在的資料 → 布隆過濾器、快取空值（設短 TTL）。\n- 擊穿：單一熱點 key 過期瞬間大量請求湧入 → 互斥鎖、邏輯過期（選項 C）。\n- 雪崩：大量 key 同時過期或 Redis 掛掉 → 過期時間加隨機值（選項 B）、多級快取、高可用。",
+      "difficulty": 1
+    },
+    {
+      "id": "dist-cap-001",
+      "domain": "distributed",
+      "sourceTitle": "CAP 定理",
+      "type": "single",
+      "stem": "根據 CAP 定理，當發生網路分區（partition）時，分散式系統必須在哪兩者之間取捨？",
+      "options": [
+        {
+          "key": "A",
+          "text": "一致性（Consistency）與可用性（Availability）"
+        },
+        {
+          "key": "B",
+          "text": "一致性（Consistency）與分區容錯（Partition tolerance）"
+        },
+        {
+          "key": "C",
+          "text": "可用性（Availability）與延遲（Latency）"
+        },
+        {
+          "key": "D",
+          "text": "吞吐量與持久性"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "分散式系統一定要能容忍網路分區（P 不能放棄），所以真正的選擇是：分區發生時，要拒絕請求以保證一致（CP，例如 ZooKeeper），還是繼續回應但資料可能不一致（AP，例如 Eureka、Cassandra）。\n延伸：PACELC 進一步指出，沒有分區時也要在延遲（L）與一致性（C）之間取捨，這就是選項 C 混淆的地方。",
+      "difficulty": 1
+    },
+    {
+      "id": "sd-rate-limit-001",
+      "domain": "system_design",
+      "sourceTitle": "限流演算法",
+      "type": "multi",
+      "stem": "關於常見的限流演算法，下列哪些正確？",
+      "options": [
+        {
+          "key": "A",
+          "text": "令牌桶（Token Bucket）允許一定程度的突發流量"
+        },
+        {
+          "key": "B",
+          "text": "固定視窗計數器在視窗交界處可能放行接近兩倍的請求"
+        },
+        {
+          "key": "C",
+          "text": "漏桶（Leaky Bucket）以固定速率處理請求，可以平滑流量"
+        },
+        {
+          "key": "D",
+          "text": "滑動視窗無法用 Redis 實作"
+        }
+      ],
+      "answer": [
+        "A",
+        "B",
+        "C"
+      ],
+      "explanation": "- 令牌桶：桶內累積的令牌可以一次用掉，允許突發。\n- 固定視窗：例如每秒 100 次，在 0.9s 與 1.1s 各打 100 次，0.2 秒內就放行了 200 次。\n- 漏桶：出口速率固定，適合保護下游。\n- D 錯誤：常見做法是用 Redis 的 ZSET 存時間戳，`ZREMRANGEBYSCORE` 移除過期的，再 `ZCARD` 計數，用 Lua 保證原子性。",
+      "difficulty": 2
+    },
+    {
+      "id": "net-tcp-timewait-001",
+      "domain": "network_os",
+      "sourceTitle": "TCP 四次揮手與 TIME_WAIT",
+      "type": "single",
+      "stem": "關於 TCP 的 TIME_WAIT 狀態，下列何者正確？",
+      "options": [
+        {
+          "key": "A",
+          "text": "由「主動關閉」連線的一方進入，持續 2MSL"
+        },
+        {
+          "key": "B",
+          "text": "由「被動關閉」連線的一方進入，持續 2MSL"
+        },
+        {
+          "key": "C",
+          "text": "雙方都會進入 TIME_WAIT"
+        },
+        {
+          "key": "D",
+          "text": "TIME_WAIT 是 UDP 的狀態"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "主動關閉方送出最後一個 ACK 後進入 TIME_WAIT，等 2MSL 的原因有二：\n1. 確保最後的 ACK 遺失時，還能回應對方重送的 FIN；\n2. 讓這條連線的舊封包在網路中過期，避免干擾之後使用相同四元組的新連線。\n伺服器大量主動關閉短連線時，會累積很多 TIME_WAIT，可以用長連線（keep-alive）或調整 `tcp_tw_reuse` 改善。",
+      "difficulty": 2
+    },
+    {
+      "id": "dp-singleton-dcl-001",
+      "domain": "design_patterns_oop",
+      "sourceTitle": "單例模式的寫法",
+      "type": "single",
+      "stem": "雙重檢查鎖（DCL）單例中，`instance` 宣告成 `volatile` 的主要原因是什麼？\n```java\npublic class Singleton {\n    private static volatile Singleton instance;\n\n    private Singleton() {}\n\n    public static Singleton getInstance() {\n        if (instance == null) {\n            synchronized (Singleton.class) {\n                if (instance == null) {\n                    instance = new Singleton();\n                }\n            }\n        }\n        return instance;\n    }\n}\n```",
+      "options": [
+        {
+          "key": "A",
+          "text": "禁止指令重排，避免其他執行緒拿到尚未初始化完成的物件"
+        },
+        {
+          "key": "B",
+          "text": "有了 volatile 就可以拿掉 synchronized"
+        },
+        {
+          "key": "C",
+          "text": "讓 `getInstance()` 變成原子操作"
+        },
+        {
+          "key": "D",
+          "text": "把變數快取在 CPU 暫存器裡以提升效能"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "`instance = new Singleton()` 可分為：1) 配置記憶體 2) 執行建構子 3) 把參考指給 `instance`。\n沒有 volatile 時，2 和 3 可能被重排，另一個執行緒在第一個 `if` 看到非 null，卻拿到還沒建構完的物件。\n更簡單的替代寫法：靜態內部類別（holder）或 `enum` 單例。",
+      "difficulty": 2
+    },
+    {
+      "id": "algo-complexity-001",
+      "domain": "algorithms",
+      "sourceTitle": "時間複雜度分析",
+      "type": "single",
+      "stem": "下列程式的時間複雜度為何？\n```java\nfor (int i = 1; i < n; i *= 2) {\n    for (int j = 0; j < n; j++) {\n        sum++;\n    }\n}\n```",
+      "options": [
+        {
+          "key": "A",
+          "text": "O(n)"
+        },
+        {
+          "key": "B",
+          "text": "O(n log n)"
+        },
+        {
+          "key": "C",
+          "text": "O(n²)"
+        },
+        {
+          "key": "D",
+          "text": "O(log n)"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "外層 `i` 每次乘以 2，執行約 log₂n 次；內層每次都完整跑 n 次。總共 n × log n。\n對比：如果內層是 `j < i`，總次數是 1 + 2 + 4 + … + n ≈ 2n，就會是 O(n)。",
+      "difficulty": 1
+    }
+  ]
+}
