@@ -21,8 +21,8 @@ android {
         applicationId = "io.github.zdyoyoyo.backendquiz"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
         buildConfigField("String", "BANK_URL", "\"$bankUrl\"")
     }
 
@@ -72,6 +72,8 @@ room {
 tasks.withType<Test>().configureEach {
     // 讓單元測試能讀到 repo 裡真正的題庫檔，用來驗證格式
     systemProperty("bankFile", rootProject.file("data/questions.json").absolutePath)
+    // Migration 測試要讀舊版 schema（app/schemas/...）來建立舊版資料庫
+    systemProperty("roomSchemaDir", file("schemas/io.github.zdyoyoyo.backendquiz.data.local.AppDatabase").absolutePath)
 }
 
 dependencies {

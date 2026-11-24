@@ -51,6 +51,20 @@ data class MistakeEntity(
     val lastWrongAt: Long,
 )
 
+/**
+ * SM-2 複習排程（第二階段新增，資料庫 v2）。
+ * 和 attempts 一樣只用 questionId 對應題目、不設外鍵：題目更新後排程照舊，題目移除後排程保留但不再出題。
+ */
+@Entity(tableName = "review_states", indices = [Index("dueEpochDay")])
+data class ReviewStateEntity(
+    @PrimaryKey val questionId: String,
+    val easiness: Double,
+    val intervalDays: Int,
+    val repetitions: Int,
+    val dueEpochDay: Long,
+    val lastReviewEpochDay: Long?,
+)
+
 /** 單列表格，存題庫目前的版本與下載資訊。和題目寫在同一個資料庫交易裡，確保一致。 */
 @Entity(tableName = "bank_meta")
 data class BankMetaEntity(
@@ -70,4 +84,11 @@ data class MistakeListRow(
     @Embedded val mistake: MistakeEntity,
     val domainCode: String,
     val stem: String,
+)
+
+data class QuestionAttemptRow(
+    val questionId: String,
+    val domainCode: String,
+    val total: Int,
+    val correct: Int,
 )

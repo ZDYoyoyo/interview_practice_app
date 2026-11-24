@@ -10,7 +10,9 @@ import io.github.zdyoyoyo.backendquiz.data.local.entity.DomainCountRow
 import io.github.zdyoyoyo.backendquiz.data.local.entity.MistakeEntity
 import io.github.zdyoyoyo.backendquiz.data.local.entity.MistakeListRow
 import io.github.zdyoyoyo.backendquiz.data.local.entity.QuestionEntity
+import io.github.zdyoyoyo.backendquiz.data.local.entity.QuestionAttemptRow
 import io.github.zdyoyoyo.backendquiz.data.local.entity.QuestionRefRow
+import io.github.zdyoyoyo.backendquiz.data.local.entity.ReviewStateEntity
 import kotlinx.coroutines.flow.Flow
 
 /*
@@ -57,6 +59,55 @@ interface AttemptDao {
 
     @Query("SELECT * FROM attempts WHERE questionId = :questionId ORDER BY answeredAt")
     suspend fun forQuestion(questionId: String): List<AttemptEntity>
+
+    /** 每題的作答次數與答對次數。包含已被移除的題目（歷史紀錄仍算進統計） */
+    @Query(
+        """
+        SELECT a.questionId AS questionId, q.domainCode AS domainCode,
+               COUNT(*) AS total, SUM(a.correct) AS correct
+        FROM attempts a JOIN questions q ON q.id = a.questionId
+        GROUP BY a.questionId
+        """
+    )
+    suspend fun questionStats(): List<QuestionAttemptRow>
+
+    @Query(
+        """
+        SELECT a.questionId AS questionId, q.domainCode AS domainCode,
+               COUNT(*) AS total, SUM(a.correct) AS correct
+        FROM attempts a JOIN questions q ON q.id = a.questionId
+        GROUP BY a.questionId
+        """
+    )
+    fun observeQuestionStats(): Flow<List<QuestionAttemptRow>>
+}
+
+@Dao
+interface ReviewDao {
+    @Query("SELECT * FROM review_states WHERE questionId = :questionId")
+    suspend fun get(questionId: String): ReviewStateEntity?
+
+    @Upsert
+    suspend fun upsert(state: ReviewStateEntity)
+
+    /** 今天（含過期）該複習、且仍在題庫中的題數 */
+    @Query(
+        """
+        SELECT COUNT(*) FROM review_states r JOIN questions q ON q.id = r.questionId
+        WHERE q.active = 1 AND r.dueEpochDay <= :today
+        """
+    )
+    fun observeDueCount(today: Long): Flow<Int>
+
+    /** 該複習的題目，過期最久的排前面 */
+    @Query(
+        """
+        SELECT r.questionId FROM review_states r JOIN questions q ON q.id = r.questionId
+        WHERE q.active = 1 AND r.dueEpochDay <= :today
+        ORDER BY r.dueEpochDay, r.questionId
+        """
+    )
+    suspend fun dueIds(today: Long): List<String>
 }
 
 @Dao

@@ -8,6 +8,7 @@ import io.github.zdyoyoyo.backendquiz.data.repository.PracticeRepository
 import io.github.zdyoyoyo.backendquiz.domain.model.Question
 import io.github.zdyoyoyo.backendquiz.domain.model.QuestionType
 import io.github.zdyoyoyo.backendquiz.domain.quiz.QuizMode
+import io.github.zdyoyoyo.backendquiz.domain.srs.Sm2Scheduler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -24,6 +25,8 @@ data class QuizUiState(
     val submitting: Boolean = false,
     val outcome: AnswerOutcome? = null,
     val correctCount: Int = 0,
+    /** 答對後選的自評分數（3/4/5）；預設 4 */
+    val rating: Int = Sm2Scheduler.QUALITY_GOOD,
     val finished: Boolean = false,
 ) {
     val current: Question? get() = questions.getOrNull(index)
@@ -78,8 +81,28 @@ class QuizViewModel(
         }
     }
 
+    /** 答對後自評：用新的分數重算 SM-2 排程 */
+    fun rate(quality: Int) {
+        val s = _state.value
+        val q = s.current ?: return
+        val outcome = s.outcome ?: return
+        if (!outcome.correct || s.rating == quality) return
+        _state.update { it.copy(rating = quality) }
+        viewModelScope.launch {
+            val review = practice.rateCorrectAnswer(q.id, outcome.reviewBefore, quality)
+            _state.update { st ->
+                if (st.current?.id == q.id) st.copy(outcome = st.outcome?.copy(review = review)) else st
+            }
+        }
+    }
+
     fun next() = _state.update { s ->
         if (s.isLast) s.copy(finished = true)
-        else s.copy(index = s.index + 1, selected = emptySet(), outcome = null)
+        else s.copy(
+            index = s.index + 1,
+            selected = emptySet(),
+            outcome = null,
+            rating = Sm2Scheduler.QUALITY_GOOD,
+        )
     }
 }
