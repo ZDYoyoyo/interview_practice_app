@@ -2,6 +2,7 @@ package io.github.zdyoyoyo.backendquiz.ui.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.github.zdyoyoyo.backendquiz.data.prefs.SettingsStore
 import io.github.zdyoyoyo.backendquiz.data.repository.BankSyncRepository
 import io.github.zdyoyoyo.backendquiz.data.repository.PracticeRepository
 import io.github.zdyoyoyo.backendquiz.data.repository.SyncOutcome
@@ -21,6 +22,8 @@ data class HomeUiState(
     val mistakeCount: Int = 0,
     val dueCount: Int = 0,
     val syncStatus: String = "",
+    /** 題庫更新提示，例如「題庫已更新到 v3：新增 5 題」；null = 沒有 */
+    val bankNotice: String? = null,
 )
 
 /**
@@ -31,6 +34,7 @@ data class HomeUiState(
 class HomeViewModel(
     private val bankSync: BankSyncRepository,
     private val practice: PracticeRepository,
+    private val settings: SettingsStore,
 ) : ViewModel() {
 
     private val syncStatus = MutableStateFlow("")
@@ -50,7 +54,14 @@ class HomeViewModel(
         syncStatus,
     ) { meta, count, mistakes, due, status ->
         HomeUiState(meta?.version, meta?.updatedAt.orEmpty(), count, mistakes.size, due, status)
+    }.combine(settings.bankNotice) { state, notice ->
+        // combine 最多一次接 5 個 Flow，第 6 個再接一層
+        state.copy(bankNotice = notice?.message())
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
+
+    fun dismissBankNotice() {
+        viewModelScope.launch { settings.clearBankNotice() }
+    }
 
     init {
         refresh()
@@ -67,7 +78,7 @@ class HomeViewModel(
             bankSync.ensureSeeded()
             syncStatus.value = when (val result = bankSync.syncRemote()) {
                 is SyncOutcome.UpToDate -> "題庫已是最新"
-                is SyncOutcome.Updated -> "題庫已更新到 v${result.toVersion}"
+                is SyncOutcome.Updated -> "題庫已更新到 v${result.toVersion}" // 詳細數字顯示在上方的提示卡
                 is SyncOutcome.Failed -> "無法連線，使用本機題庫（${result.reason}）"
             }
         }

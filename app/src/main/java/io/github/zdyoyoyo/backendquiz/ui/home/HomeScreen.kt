@@ -8,10 +8,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -38,11 +42,14 @@ fun HomeScreen(
     onStartReview: () -> Unit,
     onOpenMistakes: () -> Unit,
     onOpenStats: () -> Unit,
+    onOpenSettings: () -> Unit,
 ) {
     // 用 factory 把 Repository 傳進 ViewModel（手動 DI）
     val vm: HomeViewModel = viewModel(
         factory = viewModelFactory {
-            initializer { HomeViewModel(container.bankSyncRepository, container.practiceRepository) }
+            initializer {
+                HomeViewModel(container.bankSyncRepository, container.practiceRepository, container.settingsStore)
+            }
         },
     )
     // by：Kotlin 的委派語法，state 變了畫面會自動重畫
@@ -54,7 +61,16 @@ fun HomeScreen(
         onPauseOrDispose { }
     }
 
-    Scaffold(topBar = { TopAppBar(title = { Text("後端面試題複習") }) }) { padding ->
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("後端面試題複習") },
+                actions = {
+                    IconButton(onClick = onOpenSettings) { Icon(Icons.Default.Settings, "設定") }
+                },
+            )
+        },
+    ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -63,6 +79,7 @@ fun HomeScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            state.bankNotice?.let { BankNoticeCard(it, onDismiss = vm::dismissBankNotice) }
             ReviewCard(state.dueCount, onStartReview)
 
             Button(onClick = onStartQuiz, modifier = Modifier.fillMaxWidth()) { Text("開始做題") }
@@ -74,6 +91,19 @@ fun HomeScreen(
             }
 
             BankCard(state, onRefresh = vm::refresh)
+        }
+    }
+}
+
+@Composable
+private fun BankNoticeCard(message: String, onDismiss: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
+    ) {
+        Row(Modifier.padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("📚 $message", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+            TextButton(onClick = onDismiss) { Text("知道了") }
         }
     }
 }

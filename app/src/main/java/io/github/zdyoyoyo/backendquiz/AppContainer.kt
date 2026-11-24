@@ -1,10 +1,14 @@
 package io.github.zdyoyoyo.backendquiz
 
 import android.content.Context
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.preferencesDataStoreFile
 import io.github.zdyoyoyo.backendquiz.data.local.AppDatabase
+import io.github.zdyoyoyo.backendquiz.data.prefs.SettingsStore
 import io.github.zdyoyoyo.backendquiz.data.remote.OkHttpBankRemoteSource
 import io.github.zdyoyoyo.backendquiz.data.repository.BankSyncRepository
 import io.github.zdyoyoyo.backendquiz.data.repository.PracticeRepository
+import io.github.zdyoyoyo.backendquiz.notify.ReminderScheduler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -24,6 +28,13 @@ class AppContainer(context: Context) {
         OkHttpClient.Builder().callTimeout(20, TimeUnit.SECONDS).build()
     }
 
+    /** DataStore 同一個檔案在整個 App 只能有一個實例，所以放在 container 裡共用 */
+    val settingsStore: SettingsStore by lazy {
+        SettingsStore(PreferenceDataStoreFactory.create { appContext.preferencesDataStoreFile("settings") })
+    }
+
+    val reminderScheduler: ReminderScheduler by lazy { ReminderScheduler(appContext) }
+
     val bankSyncRepository: BankSyncRepository by lazy {
         BankSyncRepository(
             db = database,
@@ -33,6 +44,8 @@ class AppContainer(context: Context) {
                     appContext.assets.open("questions.json").bufferedReader().use { it.readText() }
                 }
             },
+            // 不管是 App 開啟時還是背景提醒時下載到新版，都記錄一則更新提示，首頁會顯示
+            onUpdated = { outcome -> outcome.toNotice()?.let { settingsStore.addBankNotice(it) } },
         )
     }
 

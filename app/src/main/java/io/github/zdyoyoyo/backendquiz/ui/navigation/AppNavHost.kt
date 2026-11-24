@@ -13,6 +13,7 @@ import io.github.zdyoyoyo.backendquiz.ui.home.HomeScreen
 import io.github.zdyoyoyo.backendquiz.ui.mistakes.MistakesScreen
 import io.github.zdyoyoyo.backendquiz.ui.quiz.QuizScreen
 import io.github.zdyoyoyo.backendquiz.ui.quiz.QuizSetupScreen
+import io.github.zdyoyoyo.backendquiz.ui.settings.SettingsScreen
 import io.github.zdyoyoyo.backendquiz.ui.stats.StatsScreen
 
 /** 路由定義：畫面之間用「類似網址」的字串切換，參數放在 query string。 */
@@ -21,6 +22,7 @@ object Routes {
     const val SETUP = "setup"
     const val MISTAKES = "mistakes"
     const val STATS = "stats"
+    const val SETTINGS = "settings"
     const val QUIZ = "quiz?mode={mode}&domains={domains}&count={count}"
 
     fun quiz(mode: QuizMode, domains: Set<String> = emptySet(), count: Int = 10): String =
@@ -41,6 +43,7 @@ fun AppNavHost(container: AppContainer) {
                 onStartReview = { nav.navigate(Routes.quiz(QuizMode.REVIEW, count = REVIEW_SESSION_MAX)) },
                 onOpenMistakes = { nav.navigate(Routes.MISTAKES) },
                 onOpenStats = { nav.navigate(Routes.STATS) },
+                onOpenSettings = { nav.navigate(Routes.SETTINGS) },
             )
         }
         composable(Routes.SETUP) {
@@ -58,6 +61,9 @@ fun AppNavHost(container: AppContainer) {
                 onBack = { nav.popBackStack() },
                 onRedo = { nav.navigate(Routes.quiz(QuizMode.MISTAKES, count = 50)) },
             )
+        }
+        composable(Routes.SETTINGS) {
+            SettingsScreen(container = container, onBack = { nav.popBackStack() })
         }
         composable(Routes.STATS) {
             StatsScreen(

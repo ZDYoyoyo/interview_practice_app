@@ -1,0 +1,10 @@
+<!-- 通知列的小圖示：Android 只取 alpha，所以要是單色 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M8.5,4C6,4 5,5.3 5,7.5L5,10C5,11.1 4.3,12 3,12C4.3,12 5,12.9 5,14L5,16.5C5,18.7 6,20 8.5,20L8.5,18C7.4,18 7,17.5 7,16.4L7,13.6C7,12.6 6.4,12.2 5.9,12C6.4,11.8 7,11.4 7,10.4L7,7.6C7,6.5 7.4,6 8.5,6Z M15.5,4C18,4 19,5.3 19,7.5L19,10C19,11.1 19.7,12 21,12C19.7,12 19,12.9 19,14L19,16.5C19,18.7 18,20 15.5,20L15.5,18C16.6,18 17,17.5 17,16.4L17,13.6C17,12.6 17.6,12.2 18.1,12C17.6,11.8 17,11.4 17,10.4L17,7.6C17,6.5 16.6,6 15.5,6Z" />
+</vector>

@@ -71,6 +71,9 @@ interface AttemptDao {
     )
     suspend fun questionStats(): List<QuestionAttemptRow>
 
+    @Query("SELECT COUNT(*) FROM attempts WHERE answeredAt >= :fromMillis")
+    suspend fun countSince(fromMillis: Long): Int
+
     @Query(
         """
         SELECT a.questionId AS questionId, q.domainCode AS domainCode,
@@ -108,6 +111,14 @@ interface ReviewDao {
         """
     )
     suspend fun dueIds(today: Long): List<String>
+
+    @Query(
+        """
+        SELECT COUNT(*) FROM review_states r JOIN questions q ON q.id = r.questionId
+        WHERE q.active = 1 AND r.dueEpochDay <= :today
+        """
+    )
+    suspend fun dueCount(today: Long): Int
 }
 
 @Dao
@@ -141,6 +152,14 @@ interface MistakeDao {
         """
     )
     suspend fun openIds(): List<String>
+
+    @Query(
+        """
+        SELECT COUNT(*) FROM mistakes m JOIN questions q ON q.id = m.questionId
+        WHERE m.mastered = 0 AND q.active = 1
+        """
+    )
+    suspend fun openCount(): Int
 }
 
 @Dao
