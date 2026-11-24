@@ -1,6 +1,6 @@
 {
-  "version": 1,
-  "updatedAt": "2026-11-24T00:00:00Z",
+  "version": 2,
+  "updatedAt": "2026-11-24T10:30:00Z",
   "questions": [
     {
       "id": "java-string-eq-001",
@@ -464,6 +464,1761 @@
       ],
       "explanation": "外層 `i` 每次乘以 2，執行約 log₂n 次；內層每次都完整跑 n 次。總共 n × log n。\n對比：如果內層是 `j < i`，總次數是 1 + 2 + 4 + … + n ≈ 2n，就會是 O(n)。",
       "difficulty": 1
+    },
+    {
+      "id": "redis-cache-trio-001",
+      "domain": "redis_mq",
+      "sourceTitle": "快取穿透、快取擊穿、快取雪崩的差別與解法",
+      "type": "single",
+      "stem": "某個秒殺商品的快取 key 剛好過期，那一瞬間上萬個請求同時查 DB。這是哪一種問題？",
+      "options": [
+        {
+          "key": "A",
+          "text": "快取穿透"
+        },
+        {
+          "key": "B",
+          "text": "快取擊穿"
+        },
+        {
+          "key": "C",
+          "text": "快取雪崩"
+        },
+        {
+          "key": "D",
+          "text": "快取一致性問題"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "- 擊穿：**單一個**熱點 key 過期，大家擠同一個洞。解法：互斥鎖只讓一個請求重建快取、熱點 key 不設 TTL。\n- 穿透：查的資料根本不存在。\n- 雪崩：**大量** key 同時過期，或 Redis 整台掛掉。",
+      "difficulty": 1
+    },
+    {
+      "id": "redis-cache-trio-002",
+      "domain": "redis_mq",
+      "sourceTitle": "快取穿透、快取擊穿、快取雪崩的差別與解法",
+      "type": "multi",
+      "stem": "有人用不存在的 id（例如 `id=-1`）狂打 API，請求全部穿過 Redis 打到 DB。哪些做法能有效防止？",
+      "options": [
+        {
+          "key": "A",
+          "text": "把「查無資料」也快取起來，TTL 設短"
+        },
+        {
+          "key": "B",
+          "text": "用布隆過濾器先擋掉不存在的 id"
+        },
+        {
+          "key": "C",
+          "text": "把所有 key 的 TTL 加上隨機值"
+        },
+        {
+          "key": "D",
+          "text": "Redis 改成主從加哨兵"
+        }
+      ],
+      "answer": [
+        "A",
+        "B"
+      ],
+      "explanation": "這是**快取穿透**。快取空值（TTL 要短，避免之後真的新增了卻查不到）和布隆過濾器是標準解法。\nC、D 是防**雪崩**的做法。",
+      "difficulty": 1
+    },
+    {
+      "id": "redis-mq-async-001",
+      "domain": "redis_mq",
+      "sourceTitle": "下單 API 同步做寫訂單、寄信、加點、通知物流要 3 秒，改用 RabbitMQ 怎麼改、好處是什麼",
+      "type": "multi",
+      "stem": "下單 API 原本同步做完寫訂單、寄信、加點、通知物流。改成「只寫訂單，再發一則訊息到 RabbitMQ」後，下列哪些敘述正確？",
+      "options": [
+        {
+          "key": "A",
+          "text": "回應時間只剩寫訂單的時間（非同步）"
+        },
+        {
+          "key": "B",
+          "text": "要新增「發優惠券」只要多一個消費者，下單程式不用改（解耦）"
+        },
+        {
+          "key": "C",
+          "text": "使用者瀏覽器就是消費者"
+        },
+        {
+          "key": "D",
+          "text": "訊息可能被重複投遞，消費者要做到冪等"
+        },
+        {
+          "key": "E",
+          "text": "點數一定會和訂單同時完成（強一致）"
+        }
+      ],
+      "answer": [
+        "A",
+        "B",
+        "D"
+      ],
+      "explanation": "- 生產者是下單服務，消費者是寄信、點數、物流服務。使用者只是呼叫 HTTP API，不是生產者也不是消費者。\n- 改用 MQ 後是**最終一致**：點數可能晚幾秒才加上。\n- 另外兩個好處：削峰（大量請求先排隊）、容錯（某服務掛了訊息還在）。",
+      "difficulty": 1
+    },
+    {
+      "id": "redis-mq-loss-001",
+      "domain": "redis_mq",
+      "sourceTitle": "RabbitMQ 訊息可能在哪些環節遺失、各怎麼防",
+      "type": "single",
+      "stem": "點數服務收到訊息，加點加到一半服務當機，結果這則訊息永遠消失。最可能的原因與解法是？",
+      "options": [
+        {
+          "key": "A",
+          "text": "生產者沒開 publisher confirm → 開啟它"
+        },
+        {
+          "key": "B",
+          "text": "Queue 沒設 durable → 設成 durable"
+        },
+        {
+          "key": "C",
+          "text": "消費者用自動 ack → 改手動 ack，處理成功才確認"
+        },
+        {
+          "key": "D",
+          "text": "訊息太大 → 壓縮訊息"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "自動 ack：訊息一送出 MQ 就刪掉。改成手動 ack 後，消費者沒確認前 MQ 會保留，當機就重新投遞。\n三個環節：生產者 → publisher confirm；MQ 本身 → durable + persistent；消費者 → 手動 ack + 死信佇列。",
+      "difficulty": 2
+    },
+    {
+      "id": "redis-mq-loss-002",
+      "domain": "redis_mq",
+      "sourceTitle": "RabbitMQ 訊息可能在哪些環節遺失、各怎麼防",
+      "type": "multi",
+      "stem": "要讓 RabbitMQ 重啟後，佇列裡還沒被消費的訊息不會不見，哪些設定是必要的？",
+      "options": [
+        {
+          "key": "A",
+          "text": "Queue 設為 durable"
+        },
+        {
+          "key": "B",
+          "text": "訊息設為 persistent"
+        },
+        {
+          "key": "C",
+          "text": "消費者改手動 ack"
+        },
+        {
+          "key": "D",
+          "text": "生產者開啟 publisher confirm"
+        }
+      ],
+      "answer": [
+        "A",
+        "B"
+      ],
+      "explanation": "durable 讓**佇列本身**重啟後還在，persistent 讓**訊息內容**寫到磁碟。兩個都要設：只設 durable，重啟後信箱在但裡面是空的。\nC、D 分別防的是消費端與生產端的遺失。",
+      "difficulty": 2
+    },
+    {
+      "id": "redis-ttl-001",
+      "domain": "redis_mq",
+      "sourceTitle": "快取穿透、快取擊穿、快取雪崩的差別與解法",
+      "type": "single",
+      "stem": "用 `redis.set(key, value, 10 分鐘)` 存入快取。第 5 分鐘時又用 `GET` 讀了一次，這個 key 什麼時候過期？",
+      "options": [
+        {
+          "key": "A",
+          "text": "從第 5 分鐘重新算 10 分鐘，第 15 分鐘過期"
+        },
+        {
+          "key": "B",
+          "text": "還是第 10 分鐘過期"
+        },
+        {
+          "key": "C",
+          "text": "讀過就不會過期"
+        },
+        {
+          "key": "D",
+          "text": "立刻過期"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "`GET` 不會動到 TTL。想要「有人讀就延長」叫滑動過期，要自己呼叫 `expire`（或 Redis 6.2+ 的 `GETEX`）。\n`TTL key` 回傳值：正數 = 剩幾秒、-1 = 沒設過期、-2 = key 不存在。",
+      "difficulty": 1
+    },
+    {
+      "id": "redis-consistency-001",
+      "domain": "redis_mq",
+      "sourceTitle": "修改價格時快取與 DB 的更新順序（快取一致性）",
+      "type": "single",
+      "stem": "商品價格存在 DB、也快取在 Redis。修改價格時，業界最常用的做法是？",
+      "options": [
+        {
+          "key": "A",
+          "text": "先刪快取，再更新 DB"
+        },
+        {
+          "key": "B",
+          "text": "先更新 DB，再刪快取"
+        },
+        {
+          "key": "C",
+          "text": "更新 DB 後也更新快取"
+        },
+        {
+          "key": "D",
+          "text": "只更新快取，排程再同步 DB"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "Cache Aside：先更新 DB 再刪快取。\n- 先刪快取：刪完到更新 DB 之間，別的請求讀到舊值並寫回快取，快取會一直是舊的。\n- 也更新快取：兩人同時改價，寫快取的順序可能跟 DB 相反。\n補救：TTL 當底線、延遲雙刪、刪除失敗用 MQ 重試。快取與 DB 只能最終一致。",
+      "difficulty": 2
+    },
+    {
+      "id": "redis-persist-001",
+      "domain": "redis_mq",
+      "sourceTitle": "Redis 重啟後資料會不見嗎；持久化機制 RDB 與 AOF",
+      "type": "single",
+      "stem": "關於 Redis 的持久化，下列何者正確？",
+      "options": [
+        {
+          "key": "A",
+          "text": "RDB 會記錄每一個寫入指令，最多丟約 1 秒"
+        },
+        {
+          "key": "B",
+          "text": "AOF 是定期把整個記憶體拍快照，檔案小、重啟快"
+        },
+        {
+          "key": "C",
+          "text": "RDB 是定期快照，兩次快照之間的資料可能遺失"
+        },
+        {
+          "key": "D",
+          "text": "Redis 資料放記憶體，所以沒有任何辦法在重啟後保留"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "- RDB（快照）：檔案小、重啟快，但會丟兩次快照之間的資料。\n- AOF（寫入日誌）：每個寫入指令都記下來，常用每秒同步一次，最多丟約 1 秒。\n實務上兩個一起開。",
+      "difficulty": 2
+    },
+    {
+      "id": "redis-ds-001",
+      "domain": "redis_mq",
+      "sourceTitle": "Redis 常用資料結構；即時積分排行榜用哪一種、為什麼",
+      "type": "single",
+      "stem": "要做一個「即時積分排行榜，顯示前 10 名」，最適合用 Redis 的哪種資料結構？",
+      "options": [
+        {
+          "key": "A",
+          "text": "String"
+        },
+        {
+          "key": "B",
+          "text": "List"
+        },
+        {
+          "key": "C",
+          "text": "Set"
+        },
+        {
+          "key": "D",
+          "text": "Sorted Set（ZSet）"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "ZSet 每個成員帶一個分數，寫入時就自動排序。\n```bash\nZINCRBY rank 50 user:42\nZREVRANGE rank 0 9 WITHSCORES\n```\n更新與查名次都是 O(log N)。用 DB 每次 `ORDER BY score DESC LIMIT 10`，分數一直變時撐不住。",
+      "difficulty": 1
+    },
+    {
+      "id": "linux-cpu-001",
+      "domain": "linux_deploy",
+      "sourceTitle": "線上 Java 服務 CPU 100%，怎麼找出是哪個程序、哪段程式碼造成",
+      "type": "single",
+      "stem": "線上 Java 服務 CPU 100%。要從「哪個程序」追到「哪一行程式碼」，正確的順序是？",
+      "options": [
+        {
+          "key": "A",
+          "text": "`jstack` → `top` → `top -Hp`"
+        },
+        {
+          "key": "B",
+          "text": "`top` → `top -Hp` → 執行緒 ID 轉 16 進位 → `jstack`"
+        },
+        {
+          "key": "C",
+          "text": "`jmap` → `jstat` → MAT"
+        },
+        {
+          "key": "D",
+          "text": "直接看 log 找 ERROR"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "從大範圍縮到小範圍：程序 → 執行緒 → 程式碼那一行。\n`top` 找 PID → `top -Hp <PID>` 找最忙的 TID → 轉 16 進位 → 在 `jstack <PID>` 輸出找 `nid=0x...` 那條，看卡在哪個 class 哪一行。\nC 是查記憶體（OOM）的流程。log 通常定位不到 CPU 熱點。",
+      "difficulty": 1
+    },
+    {
+      "id": "linux-cpu-002",
+      "domain": "linux_deploy",
+      "sourceTitle": "線上 Java 服務 CPU 100%，怎麼找出是哪個程序、哪段程式碼造成",
+      "type": "single",
+      "stem": "`top -Hp 1234` 查到最吃 CPU 的執行緒 TID 是 5678。為什麼要先把它轉成 16 進位（`162e`）？",
+      "options": [
+        {
+          "key": "A",
+          "text": "因為 `jstack` 只接受 16 進位的 PID"
+        },
+        {
+          "key": "B",
+          "text": "因為 `jstack` 輸出裡的 `nid` 是用 16 進位顯示作業系統的執行緒 ID"
+        },
+        {
+          "key": "C",
+          "text": "因為 Linux 的 TID 本來就是 16 進位"
+        },
+        {
+          "key": "D",
+          "text": "因為 Java 執行緒名稱是 16 進位"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "`jstack` 的輸出像 `\"http-nio-8080-exec-7\" ... nid=0x162e runnable`，`nid` 就是作業系統層的 TID，用 16 進位表示，轉換後才能對上。",
+      "difficulty": 2
+    },
+    {
+      "id": "linux-log-001",
+      "domain": "linux_deploy",
+      "sourceTitle": "5GB 的 app.log 打不開，怎麼找下午 3 點左右的 ERROR 與前後內容",
+      "type": "single",
+      "stem": "要從 5GB 的 `app.log` 找出每個 ERROR 以及它前後各 20 行，最適合的指令是？",
+      "options": [
+        {
+          "key": "A",
+          "text": "`vim app.log`"
+        },
+        {
+          "key": "B",
+          "text": "`cat app.log`"
+        },
+        {
+          "key": "C",
+          "text": "`grep -C 20 \"ERROR\" app.log`"
+        },
+        {
+          "key": "D",
+          "text": "`head -n 20 app.log`"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "`-C 20` 前後各 20 行（`-B` 只看前、`-A` 只看後）。\n要互動翻閱用 `less`（不會整個載入記憶體），即時追新內容用 `tail -f`。\n根本解法：設定 log rolling，不讓單一檔案長到 5GB。",
+      "difficulty": 1
+    },
+    {
+      "id": "linux-port-001",
+      "domain": "linux_deploy",
+      "sourceTitle": "部署後服務起不來，log 顯示 Address already in use: 8080，怎麼處理",
+      "type": "multi",
+      "stem": "部署新版後出現 `Address already in use: 8080`。下列哪些做法正確？",
+      "options": [
+        {
+          "key": "A",
+          "text": "用 `ss` 或 `lsof` 查是哪個 PID 佔著 8080"
+        },
+        {
+          "key": "B",
+          "text": "查到 PID 後直接 `kill -9`，不用管是什麼程式"
+        },
+        {
+          "key": "C",
+          "text": "先用 `ps` 確認那個 PID 是什麼程式，常見是舊版沒停掉"
+        },
+        {
+          "key": "D",
+          "text": "如果是舊服務，先用 `kill` 正常關閉，等幾秒還在才用 `kill -9`"
+        }
+      ],
+      "answer": [
+        "A",
+        "C",
+        "D"
+      ],
+      "explanation": "不要一查到就強制砍：如果是別的重要服務，改用別的 port。\n`kill` 會讓 Spring Boot 把手上的請求處理完再關；`kill -9` 是直接終止。\n根本解法：部署流程先停舊版再啟新版。",
+      "difficulty": 1
+    },
+    {
+      "id": "linux-docker-001",
+      "domain": "linux_deploy",
+      "sourceTitle": "Docker image 與 container 差在哪；用 Docker 部署 Spring Boot 的好處",
+      "type": "multi",
+      "stem": "關於 Docker，下列哪些敘述正確？",
+      "options": [
+        {
+          "key": "A",
+          "text": "image 像 class，container 像 new 出來的物件"
+        },
+        {
+          "key": "B",
+          "text": "一個 image 只能跑出一個 container"
+        },
+        {
+          "key": "C",
+          "text": "開發、測試、正式用同一個 image，可避免「我電腦可以跑」的問題"
+        },
+        {
+          "key": "D",
+          "text": "同一台機器上，不同服務可以各用不同版本的 JDK 而不衝突"
+        }
+      ],
+      "answer": [
+        "A",
+        "C",
+        "D"
+      ],
+      "explanation": "一個 image 可以跑出很多個 container，流量大時多開幾個就能擴充。\n其他好處：部署與回滾快（換 image 版本號）。\n注意：精簡的 JRE 映像可能沒有 `jstack`、`jmap`。",
+      "difficulty": 1
+    },
+    {
+      "id": "linux-perm-001",
+      "domain": "linux_deploy",
+      "sourceTitle": "這些指令直接在 Linux 終端打就好嗎（jstack 權限）",
+      "type": "single",
+      "stem": "在伺服器上執行 `jstack 1234` 出現 `Unable to attach`。Tomcat 是用 `tomcat` 帳號跑的，最可能的解法是？",
+      "options": [
+        {
+          "key": "A",
+          "text": "`chmod 777 /`"
+        },
+        {
+          "key": "B",
+          "text": "`sudo -u tomcat jstack 1234`"
+        },
+        {
+          "key": "C",
+          "text": "重開機"
+        },
+        {
+          "key": "D",
+          "text": "改用 `jstack -9 1234`"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "`jstack` 這類工具必須用**跟 Java 程序同一個使用者**的身分執行。先用 `ps aux | grep java` 看第一欄是哪個使用者。\n`chmod 777` 等於所有人都能改，不要這樣做。",
+      "difficulty": 2
+    },
+    {
+      "id": "jvm-count-001",
+      "domain": "java_concurrency_jvm",
+      "sourceTitle": "10 個執行緒各對 int count 做 1000 次 count++，結果小於 10000 的原因與修法",
+      "type": "multi",
+      "stem": "10 條執行緒各對同一個 `int count` 做 1000 次 `count++`，結果常小於 10000。哪些改法可以讓結果正確？",
+      "options": [
+        {
+          "key": "A",
+          "text": "方法加 `synchronized`"
+        },
+        {
+          "key": "B",
+          "text": "改用 `AtomicInteger.incrementAndGet()`"
+        },
+        {
+          "key": "C",
+          "text": "把 `count` 宣告成 `volatile`"
+        },
+        {
+          "key": "D",
+          "text": "改用 `LongAdder`，全部結束後呼叫 `sum()`"
+        }
+      ],
+      "answer": [
+        "A",
+        "B",
+        "D"
+      ],
+      "explanation": "`count++` 是讀取、加一、寫回三步，不是原子操作。\n`volatile` 只保證可見性，不保證原子性，照樣會算錯。\n`LongAdder` 把計數拆成多格各自 CAS，`sum()` 在執行緒都結束後是準確的。",
+      "difficulty": 1
+    },
+    {
+      "id": "jvm-oom-001",
+      "domain": "java_concurrency_jvm",
+      "sourceTitle": "服務跑三天越來越慢，最後 OutOfMemoryError: Java heap space，怎麼排查",
+      "type": "single",
+      "stem": "服務跑了三天越來越慢，最後出現 `OutOfMemoryError: Java heap space`。最可能的原因是？",
+      "options": [
+        {
+          "key": "A",
+          "text": "遞迴太深"
+        },
+        {
+          "key": "B",
+          "text": "記憶體洩漏：物件一直被引用，GC 收不掉"
+        },
+        {
+          "key": "C",
+          "text": "CPU 太慢"
+        },
+        {
+          "key": "D",
+          "text": "Metaspace 不夠"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "遞迴太深是 `StackOverflowError`。\n洩漏時老年代越來越滿，Full GC 越來越頻繁（每次會 Stop-The-World），所以越來越慢，最後清不出空間就 OOM。\n常見原因：`static Map` 當快取只放不清、`ThreadLocal` 沒 `remove()`。",
+      "difficulty": 1
+    },
+    {
+      "id": "jvm-oom-002",
+      "domain": "java_concurrency_jvm",
+      "sourceTitle": "服務跑三天越來越慢，最後 OutOfMemoryError: Java heap space，怎麼排查",
+      "type": "single",
+      "stem": "排查 heap OOM 時，用來看「老年代使用率、Full GC 次數」的工具是哪一個？",
+      "options": [
+        {
+          "key": "A",
+          "text": "`jstack`"
+        },
+        {
+          "key": "B",
+          "text": "`jstat`"
+        },
+        {
+          "key": "C",
+          "text": "`top -Hp`"
+        },
+        {
+          "key": "D",
+          "text": "`grep`"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "記法：\n- `jstack`：看**執行緒**在跑什麼（查 CPU、死鎖）\n- `jstat`：**GC 統計**，看 O（老年代 %）和 FGC\n- `jmap`：看 heap 裡有哪些**物件**、匯出 heap dump，再用 MAT 分析\n最好事先加 `-XX:+HeapDumpOnOutOfMemoryError`。",
+      "difficulty": 1
+    },
+    {
+      "id": "jvm-oom-003",
+      "domain": "java_concurrency_jvm",
+      "sourceTitle": "服務跑三天越來越慢，最後 OutOfMemoryError: Java heap space，怎麼排查",
+      "type": "single",
+      "stem": "下面的程式碼長時間執行後可能造成什麼問題？\n```java\nprivate static Map<Long, Order> CACHE = new HashMap<>();\n\npublic Order get(Long id) {\n    return CACHE.computeIfAbsent(id, orderDao::findById);\n}\n```",
+      "options": [
+        {
+          "key": "A",
+          "text": "StackOverflowError"
+        },
+        {
+          "key": "B",
+          "text": "記憶體洩漏，最後 OOM"
+        },
+        {
+          "key": "C",
+          "text": "死鎖"
+        },
+        {
+          "key": "D",
+          "text": "沒有問題，這是標準的快取寫法"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "`static` 變數是 GC Root，Map 裡的物件永遠找得到、永遠不會被回收，訂單越多 Map 越大。\n修法：用有上限、會過期的快取（如 Caffeine 的 `maximumSize`、`expireAfterWrite`），或放 Redis。",
+      "difficulty": 2
+    },
+    {
+      "id": "jvm-pool-002",
+      "domain": "java_concurrency_jvm",
+      "sourceTitle": "ThreadPoolExecutor 收到新任務的處理流程；為什麼不建議用 Executors.newFixedThreadPool()",
+      "type": "single",
+      "stem": "`ThreadPoolExecutor` 的核心執行緒都在忙時，新任務會先怎麼處理？",
+      "options": [
+        {
+          "key": "A",
+          "text": "立刻開臨時執行緒，直到 maximumPoolSize"
+        },
+        {
+          "key": "B",
+          "text": "放進佇列排隊；佇列滿了才開臨時執行緒"
+        },
+        {
+          "key": "C",
+          "text": "直接執行拒絕策略"
+        },
+        {
+          "key": "D",
+          "text": "等核心執行緒空出來，不會排隊"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "流程：核心未滿 → 開核心執行緒；核心滿 → **先排隊**；佇列滿 → 開臨時執行緒到 max；全滿 → 拒絕策略（預設丟 `RejectedExecutionException`）。",
+      "difficulty": 2
+    },
+    {
+      "id": "jvm-pool-003",
+      "domain": "java_concurrency_jvm",
+      "sourceTitle": "ThreadPoolExecutor 收到新任務的處理流程；為什麼不建議用 Executors.newFixedThreadPool()",
+      "type": "single",
+      "stem": "為什麼很多規範不建議用 `Executors.newFixedThreadPool()`？",
+      "options": [
+        {
+          "key": "A",
+          "text": "它會無限開新執行緒"
+        },
+        {
+          "key": "B",
+          "text": "它的佇列沒有上限，任務消化不完會一直堆積，最後 OOM"
+        },
+        {
+          "key": "C",
+          "text": "它不支援 `submit()`"
+        },
+        {
+          "key": "D",
+          "text": "它的執行緒不會被重複使用"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "- `newFixedThreadPool`：執行緒數固定，但 `LinkedBlockingQueue` 沒上限 → 任務堆積 OOM。\n- `newCachedThreadPool`：執行緒數沒上限 → 一直開執行緒（A 說的是它）。\n建議自己 `new ThreadPoolExecutor`：有界佇列、自訂執行緒名稱、明確的拒絕策略。",
+      "difficulty": 2
+    },
+    {
+      "id": "jvm-deadlock-001",
+      "domain": "java_concurrency_jvm",
+      "sourceTitle": "兩條執行緒以相反順序取得 lockA、lockB 後卡住、CPU 很低，為什麼、怎麼改",
+      "type": "single",
+      "stem": "兩條執行緒偶爾一起卡住不動，CPU 卻很低：\n```java\n// 執行緒 1\nsynchronized (lockA) { synchronized (lockB) { transfer(); } }\n// 執行緒 2\nsynchronized (lockB) { synchronized (lockA) { transfer(); } }\n```\n最直接的修法是？",
+      "options": [
+        {
+          "key": "A",
+          "text": "把兩個鎖都改成 `volatile`"
+        },
+        {
+          "key": "B",
+          "text": "讓所有執行緒都用相同順序加鎖（先 A 後 B）"
+        },
+        {
+          "key": "C",
+          "text": "加大執行緒池"
+        },
+        {
+          "key": "D",
+          "text": "改用 `Thread.sleep()` 錯開時間"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "這是死鎖：互相拿著對方要的鎖。等鎖的執行緒是 BLOCKED，不佔 CPU。\n固定加鎖順序就破壞了「循環等待」。轉帳常用「帳戶 id 小的先鎖」。也可用 `ReentrantLock.tryLock(超時)`。\n排查：`jstack` 輸出會出現 `Found one Java-level deadlock`。",
+      "difficulty": 2
+    },
+    {
+      "id": "jvm-threadlocal-001",
+      "domain": "java_concurrency_jvm",
+      "sourceTitle": "ThreadLocal 存登入使用者，上線後偶爾拿到上一個使用者的資料，為什麼、怎麼修",
+      "type": "single",
+      "stem": "用 `ThreadLocal` 存目前登入的使用者，在 Filter 裡 `set`、Service 裡 `get`，上線後偶爾拿到上一個人的資料。根本原因是？",
+      "options": [
+        {
+          "key": "A",
+          "text": "ThreadLocal 是所有執行緒共用的"
+        },
+        {
+          "key": "B",
+          "text": "Tomcat 的執行緒會被重複使用，上一個請求沒有 `remove()`"
+        },
+        {
+          "key": "C",
+          "text": "Spring Bean 是單例"
+        },
+        {
+          "key": "D",
+          "text": "Session 沒有共用"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "ThreadLocal 存在**執行緒**身上。請求結束後執行緒回到池子，下一個請求如果沒經過 `set`，`get()` 就拿到上一個人。\n修法：Filter 用 `try { ... } finally { UserContext.clear(); }`。\n不清除還會造成記憶體洩漏。",
+      "difficulty": 2
+    },
+    {
+      "id": "db-composite-001",
+      "domain": "database",
+      "sourceTitle": "orders 表查詢 WHERE user_id=? AND status='PAID' ORDER BY created_at DESC LIMIT 20 很慢，怎麼排查、建什麼索引",
+      "type": "single",
+      "stem": "這個查詢很慢，最適合建哪個索引？\n```sql\nSELECT * FROM orders\nWHERE user_id = ? AND status = 'PAID'\nORDER BY created_at DESC LIMIT 20;\n```",
+      "options": [
+        {
+          "key": "A",
+          "text": "`status` 和 `created_at` 各建一個單欄索引"
+        },
+        {
+          "key": "B",
+          "text": "`(created_at, user_id, status)`"
+        },
+        {
+          "key": "C",
+          "text": "`(user_id, status, created_at)`"
+        },
+        {
+          "key": "D",
+          "text": "只在 `status` 建索引"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "等值條件放前面、排序欄位放最後，MySQL 可以定位到 `(user_id, 'PAID')` 那段，直接倒著讀 20 筆，不用 filesort。\n分開的單欄索引通常只會用到一個；`status` 選擇性低。先用 `EXPLAIN` 確認。",
+      "difficulty": 1
+    },
+    {
+      "id": "db-filesort-001",
+      "domain": "database",
+      "sourceTitle": "orders 表查詢 WHERE user_id=? AND status='PAID' ORDER BY created_at DESC LIMIT 20 很慢，怎麼排查、建什麼索引",
+      "type": "single",
+      "stem": "`EXPLAIN` 的 `Extra` 欄出現 `Using filesort`，代表什麼？",
+      "options": [
+        {
+          "key": "A",
+          "text": "一定會把資料寫到磁碟檔案排序"
+        },
+        {
+          "key": "B",
+          "text": "MySQL 無法靠索引順序得到結果，需要自己額外排序"
+        },
+        {
+          "key": "C",
+          "text": "查詢使用了覆蓋索引"
+        },
+        {
+          "key": "D",
+          "text": "資料表需要重建"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "filesort 不一定用到檔案：量小在記憶體 `sort_buffer` 排，超過 `sort_buffer_size` 才寫暫存檔。\n`LIMIT 20` 救不了它，因為不排完不知道誰是前 20。",
+      "difficulty": 1
+    },
+    {
+      "id": "db-isolation-002",
+      "domain": "database",
+      "sourceTitle": "髒讀、不可重複讀、幻讀是什麼；MySQL InnoDB 預設隔離級別",
+      "type": "single",
+      "stem": "MySQL InnoDB 預設的交易隔離級別是？",
+      "options": [
+        {
+          "key": "A",
+          "text": "READ UNCOMMITTED"
+        },
+        {
+          "key": "B",
+          "text": "READ COMMITTED"
+        },
+        {
+          "key": "C",
+          "text": "REPEATABLE READ"
+        },
+        {
+          "key": "D",
+          "text": "SERIALIZABLE"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "級別名稱是「能做到什麼」：REPEATABLE READ（可重複讀）= 防住了「不可重複讀」。\nOracle、PostgreSQL 預設是 READ COMMITTED。",
+      "difficulty": 1
+    },
+    {
+      "id": "db-isolation-003",
+      "domain": "database",
+      "sourceTitle": "髒讀、不可重複讀、幻讀是什麼；MySQL InnoDB 預設隔離級別",
+      "type": "single",
+      "stem": "交易 A 讀到交易 B **還沒 commit** 的修改，之後 B 回滾了。這是哪一種問題？",
+      "options": [
+        {
+          "key": "A",
+          "text": "髒讀"
+        },
+        {
+          "key": "B",
+          "text": "不可重複讀"
+        },
+        {
+          "key": "C",
+          "text": "幻讀"
+        },
+        {
+          "key": "D",
+          "text": "死鎖"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "- 髒讀：讀到沒 commit 的資料\n- 不可重複讀：同一筆再讀，**值**變了\n- 幻讀：同樣條件再查，**筆數**變了",
+      "difficulty": 1
+    },
+    {
+      "id": "db-index-fail-001",
+      "domain": "database",
+      "sourceTitle": "name 欄位有索引，哪些查詢寫法會讓索引用不到",
+      "type": "multi",
+      "stem": "`users.name` 是 VARCHAR 且有索引。下列哪些寫法**用不到**這個索引？",
+      "options": [
+        {
+          "key": "A",
+          "text": "`WHERE name LIKE '%柚'`"
+        },
+        {
+          "key": "B",
+          "text": "`WHERE name LIKE '柚%'`"
+        },
+        {
+          "key": "C",
+          "text": "`WHERE UPPER(name) = 'YUZU'`"
+        },
+        {
+          "key": "D",
+          "text": "`WHERE name = 123`"
+        },
+        {
+          "key": "E",
+          "text": "`WHERE name = 'xx' OR name = 'cc'`"
+        }
+      ],
+      "answer": [
+        "A",
+        "C",
+        "D"
+      ],
+      "explanation": "- 前面加 %：不知道開頭，無法從索引定位。\n- 對欄位套函數：索引存的是原始值。\n- 型別不符：MySQL 會把每筆 name 轉成數字比較。\n- 同一個有索引的欄位做 OR，通常等同 `IN`，還是用得到；OR 另一個**沒索引**的欄位才會失效。",
+      "difficulty": 2
+    },
+    {
+      "id": "db-lock-001",
+      "domain": "database",
+      "sourceTitle": "樂觀鎖與悲觀鎖的差別，各舉一個適合的情境",
+      "type": "single",
+      "stem": "下列哪一個是**樂觀鎖**的做法？",
+      "options": [
+        {
+          "key": "A",
+          "text": "`SELECT ... FOR UPDATE` 後再更新"
+        },
+        {
+          "key": "B",
+          "text": "`UPDATE product SET stock = stock - 1, version = version + 1 WHERE id = 1 AND version = 5`"
+        },
+        {
+          "key": "C",
+          "text": "`synchronized` 方法"
+        },
+        {
+          "key": "D",
+          "text": "`LOCK TABLES product WRITE`"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "樂觀鎖全程不鎖，更新那一刻才檢查有沒有人改過（影響筆數 0 就是被搶先，重試或提示）。適合讀多寫少。\n悲觀鎖先鎖再說，別人要排隊。適合衝突頻繁、不能失敗的情境（轉帳）。",
+      "difficulty": 2
+    },
+    {
+      "id": "db-paging-001",
+      "domain": "database",
+      "sourceTitle": "深度分頁 LIMIT 1000000, 20 很慢，為什麼、怎麼改",
+      "type": "single",
+      "stem": "`SELECT * FROM orders ORDER BY id LIMIT 1000000, 20;` 越後面越慢。最常用的改法是？",
+      "options": [
+        {
+          "key": "A",
+          "text": "改寫成 `OFFSET 1000000 LIMIT 20`"
+        },
+        {
+          "key": "B",
+          "text": "記住上一頁最後一筆的 id：`WHERE id > ? ORDER BY id LIMIT 20`"
+        },
+        {
+          "key": "C",
+          "text": "把 `ORDER BY id` 拿掉"
+        },
+        {
+          "key": "D",
+          "text": "加大 `sort_buffer_size`"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "`LIMIT 1000000, 20` 本身就是 offset：要讀 1000020 筆再丟掉前 100 萬筆。\n游標分頁直接用主鍵定位，第幾頁都一樣快；缺點是不能跳到第 N 頁。\n另一招：延遲關聯，先在索引上取 20 個 id 再回表。",
+      "difficulty": 2
+    },
+    {
+      "id": "java-string-pool-002",
+      "domain": "java_basics",
+      "sourceTitle": "String a=\"hello\"; String b=new String(\"hello\"); a==b 與 a.equals(b) 結果與原因",
+      "type": "single",
+      "stem": "下列何者會印出 `true`？\n```java\nString a = \"hello\";\nString b = new String(\"hello\");\n```",
+      "options": [
+        {
+          "key": "A",
+          "text": "`a == b`"
+        },
+        {
+          "key": "B",
+          "text": "`a == b.intern()`"
+        },
+        {
+          "key": "C",
+          "text": "`b == new String(\"hello\")`"
+        },
+        {
+          "key": "D",
+          "text": "以上皆非"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "字面值放在字串常量池；`new String()` 一定在 heap 建新物件。\n`intern()` 回傳常量池裡的那一份，所以和 `a` 是同一個物件。",
+      "difficulty": 2
+    },
+    {
+      "id": "java-hashcode-001",
+      "domain": "java_basics",
+      "sourceTitle": "User 只覆寫 equals 沒覆寫 hashCode，HashSet 加入兩個 new User(\"A\") 後 size 是多少",
+      "type": "single",
+      "stem": "`User` 只覆寫了 `equals`（比 id），沒覆寫 `hashCode`。\n```java\nSet<User> set = new HashSet<>();\nset.add(new User(\"A\"));\nset.add(new User(\"A\"));\nSystem.out.println(set.size());\n```\n印出什麼？",
+      "options": [
+        {
+          "key": "A",
+          "text": "1"
+        },
+        {
+          "key": "B",
+          "text": "2"
+        },
+        {
+          "key": "C",
+          "text": "0"
+        },
+        {
+          "key": "D",
+          "text": "丟出例外"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "HashSet 先用 `hashCode()` 決定桶，同一個桶才用 `equals()` 比。兩個物件用 Object 預設的 hashCode，落在不同桶，`equals` 根本沒被呼叫。\n規則：`equals` 為 true 的兩個物件，`hashCode` 必須相同。加上 `Objects.hash(id)` 後印 1。",
+      "difficulty": 1
+    },
+    {
+      "id": "java-cme-001",
+      "domain": "java_basics",
+      "sourceTitle": "for-each 遍歷 ArrayList 時 list.remove() 會發生什麼、為什麼、怎麼改",
+      "type": "single",
+      "stem": "執行下面的程式會發生什麼？\n```java\nList<Integer> list = new ArrayList<>(List.of(1, 2, 3, 4));\nfor (Integer n : list) {\n    if (n % 2 == 0) list.remove(n);\n}\n```",
+      "options": [
+        {
+          "key": "A",
+          "text": "正常結束，list 剩 [1, 3]"
+        },
+        {
+          "key": "B",
+          "text": "丟出 `ConcurrentModificationException`"
+        },
+        {
+          "key": "C",
+          "text": "丟出 `IndexOutOfBoundsException`"
+        },
+        {
+          "key": "D",
+          "text": "無窮迴圈"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "for-each 底層是 Iterator。`list.remove()` 改了 `modCount`，下一次 `next()` 發現和 `expectedModCount` 不一致就丟例外（fail-fast）。\n修法：`list.removeIf(n -> n % 2 == 0)`，或用 `iterator.remove()`。",
+      "difficulty": 2
+    },
+    {
+      "id": "java-integer-cache-001",
+      "domain": "java_basics",
+      "sourceTitle": "Integer 127 == 127 與 128 == 128 的結果與原因（Integer 快取）",
+      "type": "single",
+      "stem": "下面印出什麼？\n```java\nInteger a = 127, b = 127;\nInteger c = 128, d = 128;\nSystem.out.println(a == b);\nSystem.out.println(c == d);\n```",
+      "options": [
+        {
+          "key": "A",
+          "text": "true / true"
+        },
+        {
+          "key": "B",
+          "text": "true / false"
+        },
+        {
+          "key": "C",
+          "text": "false / false"
+        },
+        {
+          "key": "D",
+          "text": "false / true"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "自動裝箱呼叫 `Integer.valueOf()`，-128~127 會回傳快取裡的同一個物件；128 每次都 new。\n包裝類別比較值一律用 `equals()`。另外，`null` 的 Integer 自動拆箱會 NPE。",
+      "difficulty": 1
+    },
+    {
+      "id": "spring-tx-self-002",
+      "domain": "spring",
+      "sourceTitle": "placeOrder() 內部呼叫 @Transactional 的 saveOrder()，丟例外卻沒回滾，為什麼、怎麼修",
+      "type": "multi",
+      "stem": "`placeOrder()` 沒有註解，它在同一個類別內呼叫加了 `@Transactional` 的 `saveOrder()`，丟例外卻沒有回滾。哪些修法有效？",
+      "options": [
+        {
+          "key": "A",
+          "text": "把 `@Transactional` 加在 `placeOrder()` 上"
+        },
+        {
+          "key": "B",
+          "text": "把 `saveOrder()` 搬到另一個 `@Service`，注入後呼叫"
+        },
+        {
+          "key": "C",
+          "text": "把 `saveOrder()` 改成 `private`"
+        },
+        {
+          "key": "D",
+          "text": "在 `saveOrder()` 裡 catch 住例外"
+        }
+      ],
+      "answer": [
+        "A",
+        "B"
+      ],
+      "explanation": "`@Transactional` 靠 AOP 代理。內部呼叫等於 `this.saveOrder()`，繞過了代理，所以沒開交易。\n`private` 方法同樣不會被代理；例外被 catch 吃掉也不會回滾。",
+      "difficulty": 2
+    },
+    {
+      "id": "spring-ioc-001",
+      "domain": "spring",
+      "sourceTitle": "什麼是 IoC 和 DI；@Autowired 注入的 OrderService 是誰、什麼時候建立的",
+      "type": "single",
+      "stem": "Controller 裡 `@Autowired` 注入的 `OrderService`（預設設定），是誰、在什麼時候建立的？",
+      "options": [
+        {
+          "key": "A",
+          "text": "Controller 第一次被呼叫時自己 new 的"
+        },
+        {
+          "key": "B",
+          "text": "Spring 容器在應用啟動時建立單例 Bean，再注入進來"
+        },
+        {
+          "key": "C",
+          "text": "每個 HTTP 請求各建立一個新的"
+        },
+        {
+          "key": "D",
+          "text": "讀取 XML 檔時由 Tomcat 建立"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "IoC：建立物件的控制權交給容器。DI：容器把依賴從外面塞進來（推薦建構子注入）。\n好處：鬆耦合、好測試（可注入 mock），也是 `@Transactional` 能運作的前提。",
+      "difficulty": 1
+    },
+    {
+      "id": "spring-stateless-001",
+      "domain": "spring",
+      "sourceTitle": "單例 Service 有成員變數 rows，使用者偶爾看到別人的報表資料，為什麼、怎麼改",
+      "type": "single",
+      "stem": "這個 Service 上線後，偶爾有人看到別人的報表。為什麼？\n```java\n@Service\npublic class ReportService {\n    private List<String> rows = new ArrayList<>();\n    public List<String> build(Long userId) {\n        rows.clear();\n        rows.addAll(reportDao.findByUser(userId));\n        return rows;\n    }\n}\n```",
+      "options": [
+        {
+          "key": "A",
+          "text": "查詢條件寫錯"
+        },
+        {
+          "key": "B",
+          "text": "Bean 是單例，所有請求的執行緒共用同一個 `rows`"
+        },
+        {
+          "key": "C",
+          "text": "快取過期"
+        },
+        {
+          "key": "D",
+          "text": "Session 沒有共用"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "修法：改成區域變數，`return new ArrayList<>(reportDao.findByUser(userId));`。\n原則：單例 Bean 要**無狀態**。加 `synchronized` 會讓大家排隊；改 `@Scope(\"prototype\")` 也沒用，因為注入到單例 Controller 時只注入一次。",
+      "difficulty": 2
+    },
+    {
+      "id": "spring-advice-001",
+      "domain": "spring",
+      "sourceTitle": "Controller 到處 try-catch、錯誤格式不一致，怎麼統一處理例外",
+      "type": "single",
+      "stem": "想拿掉每個 Controller 裡的 try-catch，統一處理例外與錯誤格式，該用什麼？",
+      "options": [
+        {
+          "key": "A",
+          "text": "`@Transactional`"
+        },
+        {
+          "key": "B",
+          "text": "`@RestControllerAdvice` 加 `@ExceptionHandler`"
+        },
+        {
+          "key": "C",
+          "text": "`@Async`"
+        },
+        {
+          "key": "D",
+          "text": "在 Filter 裡 catch 所有例外再自己組 JSON"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "Controller 只寫正常流程，例外往外丟，由全域例外處理轉成統一的 `ErrorResponse(code, message)`。\n最後用 `@ExceptionHandler(Exception.class)` 兜底回 500，記 log，**不要**把 stack trace 或 SQL 錯誤回給使用者。",
+      "difficulty": 1
+    },
+    {
+      "id": "spring-filter-001",
+      "domain": "spring",
+      "sourceTitle": "登入檢查用 Filter 還是 Interceptor？兩者差在哪",
+      "type": "multi",
+      "stem": "關於 Filter 與 Interceptor，哪些敘述正確？",
+      "options": [
+        {
+          "key": "A",
+          "text": "執行順序：Filter → DispatcherServlet → Interceptor → Controller"
+        },
+        {
+          "key": "B",
+          "text": "Interceptor 屬於 Servlet 規範，連靜態資源都會經過"
+        },
+        {
+          "key": "C",
+          "text": "Interceptor 拿得到要執行的 Controller 方法，可以讀方法上的註解"
+        },
+        {
+          "key": "D",
+          "text": "Interceptor 的 `preHandle` 回傳 false 就不會進 Controller"
+        }
+      ],
+      "answer": [
+        "A",
+        "C",
+        "D"
+      ],
+      "explanation": "Filter 屬於 Servlet（Tomcat）那層，所有請求都經過；Interceptor 是 Spring MVC 的機制，只管 Controller 請求。\nSpring Security 本身是一串 Filter。",
+      "difficulty": 2
+    },
+    {
+      "id": "spring-qualifier-001",
+      "domain": "spring",
+      "sourceTitle": "介面有兩個 @Service 實作，@Autowired 啟動報錯，為什麼、怎麼解",
+      "type": "multi",
+      "stem": "`PaymentService` 有兩個 `@Service` 實作，`@Autowired PaymentService` 啟動報 `NoUniqueBeanDefinitionException`。哪些做法能解決？",
+      "options": [
+        {
+          "key": "A",
+          "text": "加 `@Qualifier(\"linePayPaymentService\")` 指定名稱"
+        },
+        {
+          "key": "B",
+          "text": "在其中一個實作加 `@Primary`"
+        },
+        {
+          "key": "C",
+          "text": "注入 `Map<String, PaymentService>`，執行時依付款方式挑"
+        },
+        {
+          "key": "D",
+          "text": "把欄位改成 `static`"
+        }
+      ],
+      "answer": [
+        "A",
+        "B",
+        "C"
+      ],
+      "explanation": "Spring 預設依**型別**注入，找到兩個就不知道選哪個。\nC 就是策略模式：新增付款方式只要多一個 `@Service`，不用改 if-else。",
+      "difficulty": 2
+    },
+    {
+      "id": "dist-idempotent-001",
+      "domain": "distributed",
+      "sourceTitle": "金流付款 callback 重複通知，造成重複加點，怎麼設計冪等",
+      "type": "multi",
+      "stem": "金流 callback 可能重複送同一筆付款通知。哪些做法能避免重複加點？",
+      "options": [
+        {
+          "key": "A",
+          "text": "`UPDATE orders SET status='PAID' WHERE id=? AND status='UNPAID'`，影響筆數 1 才加點"
+        },
+        {
+          "key": "B",
+          "text": "用金流交易編號建 UNIQUE 索引，重複就插入失敗"
+        },
+        {
+          "key": "C",
+          "text": "收到重複通知時回傳錯誤，讓金流停止重送"
+        },
+        {
+          "key": "D",
+          "text": "改狀態和加點放在同一個 DB 交易"
+        }
+      ],
+      "answer": [
+        "A",
+        "B",
+        "D"
+      ],
+      "explanation": "冪等：處理幾次結果都一樣。\n重複通知也要回「成功」，不然金流會一直重送。另外要驗證簽章，確認通知真的是金流送的。",
+      "difficulty": 2
+    },
+    {
+      "id": "dist-oversell-001",
+      "domain": "distributed",
+      "sourceTitle": "秒殺扣庫存加 synchronized，部署 3 台機器後仍超賣，為什麼、怎麼解",
+      "type": "single",
+      "stem": "扣庫存的方法加了 `synchronized`，單機正常，部署成 3 台後還是超賣。原因是？",
+      "options": [
+        {
+          "key": "A",
+          "text": "synchronized 有 bug"
+        },
+        {
+          "key": "B",
+          "text": "synchronized 是 JVM 內的鎖，3 台就是 3 個 JVM、3 把各自的鎖"
+        },
+        {
+          "key": "C",
+          "text": "Nginx 分流不平均"
+        },
+        {
+          "key": "D",
+          "text": "DB 連線池太小"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "解法：\n- DB 條件更新 `UPDATE stock SET count = count - 1 WHERE id = ? AND count > 0`\n- Redis 原子扣減（`DECR` 或 Lua），成功再透過 MQ 寫 DB\n- 分散式鎖：`SET key value NX EX 10` 或 Redisson",
+      "difficulty": 2
+    },
+    {
+      "id": "dist-session-001",
+      "domain": "distributed",
+      "sourceTitle": "服務擴充成 3 台後登入狀態常常消失（Session 共用問題），為什麼、怎麼解",
+      "type": "multi",
+      "stem": "服務擴成 3 台、前面用 Nginx 分流後，使用者常常被登出。哪些是可行的解法？",
+      "options": [
+        {
+          "key": "A",
+          "text": "Session 集中存到 Redis（Spring Session）"
+        },
+        {
+          "key": "B",
+          "text": "改用 JWT，伺服器不存登入狀態"
+        },
+        {
+          "key": "C",
+          "text": "Nginx 設 `ip_hash` 讓同一人固定到同一台"
+        },
+        {
+          "key": "D",
+          "text": "把 Tomcat 的 Session 逾時調長"
+        }
+      ],
+      "answer": [
+        "A",
+        "B",
+        "C"
+      ],
+      "explanation": "Session 預設存在各台 Tomcat 的記憶體，換一台就找不到。\n- Redis：快、可設 TTL（最常見）\n- JWT：天生適合多台，但發出去後難以提前作廢\n- 黏性 Session：那台掛了就全部登出，流量也可能不平均\nD 不能解決不同機器之間不共用的問題。",
+      "difficulty": 2
+    },
+    {
+      "id": "sd-shorturl-001",
+      "domain": "system_design",
+      "sourceTitle": "設計短網址服務：存什麼資料、短碼怎麼產生、怎麼轉址",
+      "type": "single",
+      "stem": "短網址服務用「自增 id 轉成短碼」。應該用哪種編碼？",
+      "options": [
+        {
+          "key": "A",
+          "text": "Base64"
+        },
+        {
+          "key": "B",
+          "text": "Base62（0-9、a-z、A-Z）"
+        },
+        {
+          "key": "C",
+          "text": "MD5 取前 6 碼"
+        },
+        {
+          "key": "D",
+          "text": "16 進位"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "Base64 含 `+` 和 `/`，放在網址裡會出問題。\n自增 id 不重複，轉出來的碼也不會重複，不需要截斷或去重。6 碼約 568 億組。\n對長網址做 hash 再取前幾碼的做法，才需要處理碰撞。",
+      "difficulty": 1
+    },
+    {
+      "id": "sd-shorturl-002",
+      "domain": "system_design",
+      "sourceTitle": "設計短網址服務：存什麼資料、短碼怎麼產生、怎麼轉址",
+      "type": "single",
+      "stem": "短網址服務想統計每個短網址的點擊數，轉址時應該回哪個狀態碼？",
+      "options": [
+        {
+          "key": "A",
+          "text": "301"
+        },
+        {
+          "key": "B",
+          "text": "302"
+        },
+        {
+          "key": "C",
+          "text": "200"
+        },
+        {
+          "key": "D",
+          "text": "404"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "301 是永久轉址，瀏覽器會快取，之後不會再經過你的伺服器，就統計不到。\n302 是暫時轉址，每次都會來你這裡。轉址前先查 Redis，沒有再查 DB（讀多寫少）。",
+      "difficulty": 1
+    },
+    {
+      "id": "net-browser-001",
+      "domain": "network_os",
+      "sourceTitle": "瀏覽器輸入 https://www.example.com 到看到頁面，經過哪些步驟",
+      "type": "single",
+      "stem": "在瀏覽器輸入 `https://www.example.com` 按下 Enter，下列步驟的正確順序是？",
+      "options": [
+        {
+          "key": "A",
+          "text": "TCP 三次握手 → DNS 解析 → TLS 握手 → 送 HTTP 請求"
+        },
+        {
+          "key": "B",
+          "text": "DNS 解析 → TCP 三次握手 → TLS 握手 → 送 HTTP 請求"
+        },
+        {
+          "key": "C",
+          "text": "DNS 解析 → TLS 握手 → TCP 三次握手 → 送 HTTP 請求"
+        },
+        {
+          "key": "D",
+          "text": "送 HTTP 請求 → DNS 解析 → TCP 三次握手 → TLS 握手"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "記法：找 → 連 → 鎖 → 要 → 回 → 畫。\nDNS 找 IP → TCP 建連線 → TLS 加密（https 才有）→ 送請求 → 伺服器處理（Nginx → Tomcat → DB）回 HTML → 瀏覽器渲染。",
+      "difficulty": 1
+    },
+    {
+      "id": "net-status-001",
+      "domain": "network_os",
+      "sourceTitle": "HTTP 狀態碼 401 vs 403、502 vs 504 的差別與情境",
+      "type": "single",
+      "stem": "使用者已經登入，但他是一般會員，卻呼叫了管理員專用的 API。應該回哪個狀態碼？",
+      "options": [
+        {
+          "key": "A",
+          "text": "401"
+        },
+        {
+          "key": "B",
+          "text": "403"
+        },
+        {
+          "key": "C",
+          "text": "502"
+        },
+        {
+          "key": "D",
+          "text": "504"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "401：你是誰？（沒登入、token 過期）\n403：我知道你是誰，但你不能進。",
+      "difficulty": 1
+    },
+    {
+      "id": "net-status-002",
+      "domain": "network_os",
+      "sourceTitle": "HTTP 狀態碼 401 vs 403、502 vs 504 的差別與情境",
+      "type": "single",
+      "stem": "Nginx 連得到後面的 Tomcat，但 Tomcat 正在 Full GC，很久沒回應。使用者最可能看到？",
+      "options": [
+        {
+          "key": "A",
+          "text": "401"
+        },
+        {
+          "key": "B",
+          "text": "403"
+        },
+        {
+          "key": "C",
+          "text": "502"
+        },
+        {
+          "key": "D",
+          "text": "504"
+        }
+      ],
+      "answer": [
+        "D"
+      ],
+      "explanation": "504 Gateway Timeout：閘道等後端等到超時（慢查詢、Full GC、外部 API 太慢）。\n502 Bad Gateway：閘道連不到後端或拿到無效回應（Tomcat 掛了、還沒啟動、port 設錯）。",
+      "difficulty": 2
+    },
+    {
+      "id": "net-tcpudp-001",
+      "domain": "network_os",
+      "sourceTitle": "TCP 與 UDP 的差別，各適合什麼情境",
+      "type": "multi",
+      "stem": "下列哪些情境通常用 UDP？",
+      "options": [
+        {
+          "key": "A",
+          "text": "視訊通話"
+        },
+        {
+          "key": "B",
+          "text": "檔案下載"
+        },
+        {
+          "key": "C",
+          "text": "DNS 查詢"
+        },
+        {
+          "key": "D",
+          "text": "資料庫連線"
+        },
+        {
+          "key": "E",
+          "text": "線上遊戲的即時位置同步"
+        }
+      ],
+      "answer": [
+        "A",
+        "C",
+        "E"
+      ],
+      "explanation": "UDP 不保證送達與順序、不重傳，但延遲低。晚到的畫面已經沒意義，重傳反而卡頓。\nTCP 有確認與重傳、保證順序，適合檔案、網頁、資料庫連線。\n補充：HTTP/3 建在 UDP（QUIC）上。",
+      "difficulty": 1
+    },
+    {
+      "id": "dp-singleton-002",
+      "domain": "design_patterns_oop",
+      "sourceTitle": "懶漢式單例 getInstance() 在多執行緒下的問題與修法",
+      "type": "single",
+      "stem": "雙重檢查鎖（DCL）單例中，`instance` 為什麼一定要加 `volatile`？",
+      "options": [
+        {
+          "key": "A",
+          "text": "讓 `getInstance()` 變快"
+        },
+        {
+          "key": "B",
+          "text": "防止指令重排，避免別的執行緒拿到還沒初始化完成的物件"
+        },
+        {
+          "key": "C",
+          "text": "讓 `instance` 可以被序列化"
+        },
+        {
+          "key": "D",
+          "text": "不加也可以，只是習慣"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "`new Config()` 底層分三步：配置記憶體、初始化、把位址指定給 instance。後兩步可能被重排，另一條執行緒就拿到半成品。\n更簡潔的寫法：靜態內部類別 Holder，或餓漢式 `static final`（類別載入時就建立）。",
+      "difficulty": 2
+    },
+    {
+      "id": "sec-sqli-001",
+      "domain": "security",
+      "sourceTitle": "字串拼接 SQL 的問題、攻擊範例與修法（SQL injection）",
+      "type": "single",
+      "stem": "`\"SELECT * FROM users WHERE name = '\" + name + \"'\"` 有 SQL injection 風險。根本的修法是？",
+      "options": [
+        {
+          "key": "A",
+          "text": "檢查 name 不能有空白"
+        },
+        {
+          "key": "B",
+          "text": "改用 `PreparedStatement` 加 `?` 佔位符綁定參數"
+        },
+        {
+          "key": "C",
+          "text": "改成 `LIKE '%' + name + '%'`"
+        },
+        {
+          "key": "D",
+          "text": "把 name 轉成大寫"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "攻擊例：輸入 `' OR '1'='1`，變成 `WHERE name = '' OR '1'='1'`，撈出全部。\n參數綁定時 SQL 結構先編譯，輸入只會被當成資料。MyBatis 用 `#{}`，**不要**用 `${}`。",
+      "difficulty": 1
+    },
+    {
+      "id": "sec-password-001",
+      "domain": "security",
+      "sourceTitle": "使用者密碼怎麼存進資料庫；為什麼不能只用 MD5",
+      "type": "single",
+      "stem": "使用者密碼應該怎麼存進資料庫？",
+      "options": [
+        {
+          "key": "A",
+          "text": "用 AES 加密後存，需要時解密比對"
+        },
+        {
+          "key": "B",
+          "text": "用 MD5 雜湊後存"
+        },
+        {
+          "key": "C",
+          "text": "用 bcrypt 這類刻意很慢、自動加鹽的雜湊演算法"
+        },
+        {
+          "key": "D",
+          "text": "存明碼，靠 DB 權限保護"
+        }
+      ],
+      "answer": [
+        "C"
+      ],
+      "explanation": "密碼要**雜湊**（單向、無法還原），不是加密（金鑰外洩就全曝光）。\nMD5 太快，容易暴力破解；沒加鹽還能用彩虹表直接查。\nSpring Security：`BCryptPasswordEncoder` 的 `encode()` 與 `matches()`。",
+      "difficulty": 1
+    },
+    {
+      "id": "git-rebase-001",
+      "domain": "testing_git",
+      "sourceTitle": "怎麼把 main 的更新拿到自己的 feature branch；merge 與 rebase 的差別",
+      "type": "multi",
+      "stem": "關於 `git merge` 與 `git rebase`，哪些敘述正確？",
+      "options": [
+        {
+          "key": "A",
+          "text": "merge 會保留分叉的歷史，多一個合併 commit"
+        },
+        {
+          "key": "B",
+          "text": "rebase 會把你的 commit 搬到 main 最新位置，產生新的 commit hash"
+        },
+        {
+          "key": "C",
+          "text": "只有 merge 會遇到衝突，rebase 不會"
+        },
+        {
+          "key": "D",
+          "text": "不要 rebase 多人共用、已經 push 的分支"
+        }
+      ],
+      "answer": [
+        "A",
+        "B",
+        "D"
+      ],
+      "explanation": "兩者都可能衝突：merge 一次處理完，rebase 可能每個 commit 各處理一次。\nrebase 改寫了歷史，已 push 的分支要 force push，所以不要用在共用分支。",
+      "difficulty": 2
+    },
+    {
+      "id": "test-mock-001",
+      "domain": "testing_git",
+      "sourceTitle": "OrderService 依賴 OrderDao，單元測試怎麼不連 DB（mock）",
+      "type": "single",
+      "stem": "想幫 `OrderService` 寫單元測試，但它依賴的 `OrderDao` 會連 DB。最好的做法是？",
+      "options": [
+        {
+          "key": "A",
+          "text": "在方法加一個參數，測試時回傳假資料"
+        },
+        {
+          "key": "B",
+          "text": "用 Mockito 建立假的 `OrderDao`（`@Mock`），注入到 `OrderService`（`@InjectMocks`）"
+        },
+        {
+          "key": "C",
+          "text": "測試前先在正式 DB 塞資料"
+        },
+        {
+          "key": "D",
+          "text": "把 `OrderDao` 改成 static 方法"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "```java\n@Mock OrderDao orderDao;\n@InjectMocks OrderService orderService;\nwhen(orderDao.findById(1L)).thenReturn(order);\n```\n正式程式碼完全不用改。能這樣替換，正是因為 `OrderDao` 是注入進來的（DI）。\n要連真的 DB 一起測叫整合測試。",
+      "difficulty": 1
+    },
+    {
+      "id": "algo-twosum-001",
+      "domain": "algorithms",
+      "sourceTitle": "Two Sum：找出兩個相加等於 target 的索引，暴力解複雜度與更快解法",
+      "type": "single",
+      "stem": "Two Sum（找兩個數相加等於 target 的索引）用 HashMap 一次遍歷的時間與空間複雜度是？",
+      "options": [
+        {
+          "key": "A",
+          "text": "時間 O(n²)、空間 O(1)"
+        },
+        {
+          "key": "B",
+          "text": "時間 O(n)、空間 O(n)"
+        },
+        {
+          "key": "C",
+          "text": "時間 O(n log n)、空間 O(1)"
+        },
+        {
+          "key": "D",
+          "text": "時間 O(n)、空間 O(1)"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "每個數算出 `need = target - nums[i]`，先查 map 有沒有 need（O(1)），沒有才放入自己。用空間換時間。\n「先查再放」可避免同一個數字用兩次。",
+      "difficulty": 1
+    },
+    {
+      "id": "cs-process-thread-001",
+      "domain": "cs_fundamentals",
+      "sourceTitle": "程序與執行緒的差別；Tomcat 為什麼用多執行緒而非多程序",
+      "type": "multi",
+      "stem": "關於程序（process）與執行緒（thread），哪些敘述正確？",
+      "options": [
+        {
+          "key": "A",
+          "text": "同一個程序裡的執行緒共用 heap，各自有自己的 stack"
+        },
+        {
+          "key": "B",
+          "text": "不同程序之間記憶體是獨立的"
+        },
+        {
+          "key": "C",
+          "text": "建立執行緒的成本比建立程序高"
+        },
+        {
+          "key": "D",
+          "text": "一條執行緒造成 OOM，可能拖垮整個程序"
+        }
+      ],
+      "answer": [
+        "A",
+        "B",
+        "D"
+      ],
+      "explanation": "比喻：程序是公司，執行緒是員工（共用辦公室、各有桌子）。\nTomcat 用多執行緒，所有請求能共用 Spring Bean、連線池、快取；代價是要注意執行緒安全。",
+      "difficulty": 1
+    },
+    {
+      "id": "ai-llm-cs-001",
+      "domain": "ai_applications",
+      "sourceTitle": "Spring Boot 串接 LLM API 做客服自動回覆，實作與上線要注意什麼",
+      "type": "multi",
+      "stem": "用 LLM 做客服自動回覆，下列哪些做法是恰當的？",
+      "options": [
+        {
+          "key": "A",
+          "text": "用 RAG 把公司 FAQ 放進 prompt，要求只依資料回答，不確定就轉真人"
+        },
+        {
+          "key": "B",
+          "text": "讓 AI 直接執行退款，減少人工"
+        },
+        {
+          "key": "C",
+          "text": "送出前先遮蔽客人的電話、卡號"
+        },
+        {
+          "key": "D",
+          "text": "設定 timeout，API 掛掉時轉真人或回預設訊息"
+        },
+        {
+          "key": "E",
+          "text": "API key 直接寫在程式碼裡方便部署"
+        }
+      ],
+      "answer": [
+        "A",
+        "C",
+        "D"
+      ],
+      "explanation": "- 退款這類動作不應讓 AI 直接執行（prompt injection 風險）。\n- API key 放設定檔或密鑰管理服務。\n- 成本：限制 token、常見問題快取、對使用者限流。",
+      "difficulty": 2
     }
   ]
 }
