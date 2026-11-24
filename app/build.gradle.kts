@@ -69,7 +69,22 @@ room {
     schemaDirectory("$projectDir/schemas")
 }
 
+// ---- Robolectric 的 Android 系統 jar ----
+// Robolectric 預設在「測試執行時」自己從 Maven Central 下載約 150MB 的 android-all jar，
+// 不經過 Gradle，沒有快取也沒有重試，CI 上常被限流（HTTP 429）而失敗。
+// 改由 Gradle 下載（有快取、會重試），再讓 Robolectric 以離線模式讀取。
+// 版本字串對應 Robolectric 4.14.x；需要測試用的 SDK 34 與 targetSdk 35。升級 Robolectric 時要一起更新。
+val robolectricRuntime: Configuration by configurations.creating { isTransitive = false }
+val robolectricJarsDir = layout.buildDirectory.dir("robolectric-jars")
+val copyRobolectricJars by tasks.registering(Copy::class) {
+    from(robolectricRuntime)
+    into(robolectricJarsDir)
+}
+
 tasks.withType<Test>().configureEach {
+    dependsOn(copyRobolectricJars)
+    systemProperty("robolectric.offline", "true")
+    systemProperty("robolectric.dependency.dir", robolectricJarsDir.get().asFile.absolutePath)
     // 讓單元測試能讀到 repo 裡真正的題庫檔，用來驗證格式
     systemProperty("bankFile", rootProject.file("data/questions.json").absolutePath)
     // Migration 測試要讀舊版 schema（app/schemas/...）來建立舊版資料庫
@@ -102,6 +117,8 @@ dependencies {
     testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.robolectric)
+    robolectricRuntime("org.robolectric:android-all-instrumented:14-robolectric-10818077-i7") // SDK 34：測試用
+    robolectricRuntime("org.robolectric:android-all-instrumented:15-robolectric-12650502-i7") // SDK 35：targetSdk
     testImplementation(libs.androidx.test.core)
     testImplementation(libs.androidx.work.testing)
 }

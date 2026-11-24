@@ -229,7 +229,7 @@ Room（SQLite）
 
 測試報告：`app/build/reports/tests/testDebugUnitTest/index.html`
 
-> 第一次跑 Robolectric 測試時，會從 Maven Central 下載約 150MB 的 Android 系統 jar，之後就會使用快取。
+> 第一次跑測試時，Gradle 會下載 Robolectric 需要的 Android 系統 jar（SDK 34、35 各約 150MB，優先從 Google 的 Maven Central 鏡像下載），之後使用 Gradle 快取。Robolectric 以離線模式執行，測試期間不會再連網下載。
 
 ### 測試涵蓋範圍
 
