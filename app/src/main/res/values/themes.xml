@@ -1,0 +1,4 @@
+<resources>
+    <!-- 真正的配色在 Compose 的 ui/theme 裡；這裡只負責啟動前的視窗底色 -->
+    <style name="Theme.BackendQuiz" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>
