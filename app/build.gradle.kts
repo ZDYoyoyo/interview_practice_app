@@ -74,10 +74,21 @@ room {
 // 不經過 Gradle，沒有快取也沒有重試，CI 上常被限流（HTTP 429）而失敗。
 // 改由 Gradle 下載（有快取、會重試），再讓 Robolectric 以離線模式讀取。
 // 版本字串對應 Robolectric 4.14.x；需要測試用的 SDK 34 與 targetSdk 35。升級 Robolectric 時要一起更新。
-val robolectricRuntime: Configuration by configurations.creating { isTransitive = false }
+val robolectricAndroidAll = listOf(
+    "14-robolectric-10818077-i7", // SDK 34：測試用
+    "15-robolectric-12650502-i7", // SDK 35：targetSdk
+)
 val robolectricJarsDir = layout.buildDirectory.dir("robolectric-jars")
 val copyRobolectricJars by tasks.registering(Copy::class) {
-    from(robolectricRuntime)
+    // 每個版本各用一個獨立的 configuration：放在同一個 configuration 裡，
+    // Gradle 的版本衝突解析只會留下最新的那一個
+    robolectricAndroidAll.forEach { version ->
+        from(
+            configurations.detachedConfiguration(
+                dependencies.create("org.robolectric:android-all-instrumented:$version")
+            ).apply { isTransitive = false }
+        )
+    }
     into(robolectricJarsDir)
 }
 
@@ -117,8 +128,6 @@ dependencies {
     testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.robolectric)
-    robolectricRuntime("org.robolectric:android-all-instrumented:14-robolectric-10818077-i7") // SDK 34：測試用
-    robolectricRuntime("org.robolectric:android-all-instrumented:15-robolectric-12650502-i7") // SDK 35：targetSdk
     testImplementation(libs.androidx.test.core)
     testImplementation(libs.androidx.work.testing)
 }
