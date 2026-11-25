@@ -1,6 +1,6 @@
 {
-  "version": 4,
-  "updatedAt": "2026-11-24T10:50:00Z",
+  "version": 5,
+  "updatedAt": "2026-11-25T09:10:00Z",
   "questions": [
     {
       "id": "redis-cache-trio-001",
@@ -1693,6 +1693,190 @@
         "D"
       ],
       "explanation": "- 退款這類動作不應讓 AI 直接執行（prompt injection 風險）。\n- API key 放設定檔或密鑰管理服務。\n- 成本：限制 token、常見問題快取、對使用者限流。",
+      "difficulty": 2
+    },
+    {
+      "id": "db-covering-index-001",
+      "domain": "database",
+      "sourceTitle": "什麼是回表、覆蓋索引；SELECT * 與 SELECT id, name 哪個快",
+      "type": "single",
+      "stem": "`users` 表在 `name` 上有索引（InnoDB）。下列哪個查詢**不需要回表**？",
+      "options": [
+        {
+          "key": "A",
+          "text": "`SELECT * FROM users WHERE name = '柚子'`"
+        },
+        {
+          "key": "B",
+          "text": "`SELECT id, name FROM users WHERE name = '柚子'`"
+        },
+        {
+          "key": "C",
+          "text": "`SELECT name, email FROM users WHERE name = '柚子'`"
+        },
+        {
+          "key": "D",
+          "text": "三個都需要回表"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "InnoDB 的二級索引葉子節點只存「索引欄位 + 主鍵 id」。\n用 name 索引找到 id 後，還要拿 id 回主鍵索引取其他欄位，這叫**回表**。\n查詢要的欄位全在索引裡（name、id）就不用回表，叫**覆蓋索引**，`EXPLAIN` 的 Extra 會顯示 `Using index`。\nC 的 email 不在索引裡，要回表。",
+      "difficulty": 2
+    },
+    {
+      "id": "db-covering-index-002",
+      "domain": "database",
+      "sourceTitle": "什麼是回表、覆蓋索引；SELECT * 與 SELECT id, name 哪個快",
+      "type": "single",
+      "stem": "InnoDB 的二級索引（例如 `name` 上的索引），葉子節點存的是什麼？",
+      "options": [
+        {
+          "key": "A",
+          "text": "整列資料"
+        },
+        {
+          "key": "B",
+          "text": "索引欄位的值 + 主鍵 id"
+        },
+        {
+          "key": "C",
+          "text": "只有索引欄位的值"
+        },
+        {
+          "key": "D",
+          "text": "資料列在磁碟上的實體位址"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "主鍵索引（聚簇索引）的葉子節點存整列資料；二級索引只存索引欄位和主鍵 id。\n所以查其他欄位時要拿 id 再去主鍵索引找一次，就是回表。這也是 `SELECT *` 比較慢的原因之一。",
+      "difficulty": 2
+    },
+    {
+      "id": "dist-tx-001",
+      "domain": "distributed",
+      "sourceTitle": "微服務拆成訂單、庫存兩個 DB 後，下單無法用一個 @Transactional 保證一致，為什麼、怎麼處理",
+      "type": "single",
+      "stem": "訂單服務和庫存服務各有自己的 DB。為什麼不能在訂單服務用一個 `@Transactional` 同時保證「建訂單」和「扣庫存」？",
+      "options": [
+        {
+          "key": "A",
+          "text": "因為 `@Transactional` 只能用在 Controller"
+        },
+        {
+          "key": "B",
+          "text": "因為 `@Transactional` 是本地交易，只管得到自己這條 DB 連線，管不到另一個服務的 DB"
+        },
+        {
+          "key": "C",
+          "text": "因為兩個服務的程式語言不同"
+        },
+        {
+          "key": "D",
+          "text": "因為 MySQL 不支援交易"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "本地交易靠同一條 DB 連線的 commit / rollback。另一個服務的 DB、又隔著網路呼叫，本地交易管不到。\n跨服務的一致性要靠分散式交易的做法，通常接受最終一致。",
+      "difficulty": 2
+    },
+    {
+      "id": "dist-tx-002",
+      "domain": "distributed",
+      "sourceTitle": "微服務拆成訂單、庫存兩個 DB 後，下單無法用一個 @Transactional 保證一致，為什麼、怎麼處理",
+      "type": "multi",
+      "stem": "微服務之間要讓「建訂單」與「扣庫存」最終一致，下列哪些是常見做法？",
+      "options": [
+        {
+          "key": "A",
+          "text": "訂單服務在同一個本地交易寫入訂單與 outbox 訊息，再送到 MQ 讓庫存服務消費"
+        },
+        {
+          "key": "B",
+          "text": "Saga：每一步都有補償動作，扣庫存失敗就把訂單改為取消"
+        },
+        {
+          "key": "C",
+          "text": "在訂單服務加 `synchronized`"
+        },
+        {
+          "key": "D",
+          "text": "TCC：Try 預留、Confirm 確認、Cancel 釋放"
+        }
+      ],
+      "answer": [
+        "A",
+        "B",
+        "D"
+      ],
+      "explanation": "- 可靠訊息（outbox + MQ）最常用，消費者要手動 ack、做冪等。\n- Saga 用補償代替回滾。\n- TCC 一致性較強，但每個服務都要實作三個介面。\n- `synchronized` 只是 JVM 內的鎖，跟跨服務一致性無關。\n強一致的 2PC/XA 效能差，微服務很少用。",
+      "difficulty": 3
+    },
+    {
+      "id": "sd-ratelimit-login-001",
+      "domain": "system_design",
+      "sourceTitle": "登入 API 被暴力猜密碼，同一個 IP 每分鐘最多 5 次，怎麼設計限流、資料存哪裡",
+      "type": "single",
+      "stem": "登入 API 要限制「同一個 IP 每分鐘最多 5 次」，服務部署在 3 台機器上。計數最適合存在哪裡？",
+      "options": [
+        {
+          "key": "A",
+          "text": "每台機器各自的記憶體（HashMap）"
+        },
+        {
+          "key": "B",
+          "text": "Redis：`INCR login:fail:{ip}`，第一次時設 `EXPIRE 60`"
+        },
+        {
+          "key": "C",
+          "text": "瀏覽器的 Cookie"
+        },
+        {
+          "key": "D",
+          "text": "MySQL，每次請求都 UPDATE 一筆"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "- 存本機記憶體：3 台各算各的，等於可以試 15 次。\n- Cookie：攻擊者自己刪掉就好。\n- MySQL：每個請求都寫 DB，壓力大，還要自己清過期資料。\nRedis 快、多台共用、`EXPIRE` 自動過期，而且 `INCR` 是原子操作，不會有 `count++` 的競爭問題。超過上限回 429 Too Many Requests。",
+      "difficulty": 2
+    },
+    {
+      "id": "sd-ratelimit-login-002",
+      "domain": "system_design",
+      "sourceTitle": "登入 API 被暴力猜密碼，同一個 IP 每分鐘最多 5 次，怎麼設計限流、資料存哪裡",
+      "type": "multi",
+      "stem": "防止登入被暴力猜密碼，除了限制每個 IP 的次數，下列哪些也是好的做法？",
+      "options": [
+        {
+          "key": "A",
+          "text": "同時限制每個帳號的失敗次數（攻擊者會換 IP）"
+        },
+        {
+          "key": "B",
+          "text": "連續失敗幾次後要求驗證碼或暫時鎖定帳號"
+        },
+        {
+          "key": "C",
+          "text": "錯誤訊息明確告訴對方「帳號不存在」或「密碼錯誤」"
+        },
+        {
+          "key": "D",
+          "text": "在 Filter 或 Interceptor 先擋，不讓請求進到驗證密碼的邏輯"
+        }
+      ],
+      "answer": [
+        "A",
+        "B",
+        "D"
+      ],
+      "explanation": "錯誤訊息應該統一寫「帳號或密碼錯誤」，不要讓攻擊者知道哪些帳號存在。\n限流演算法：固定視窗最簡單，但視窗交界可能短時間打兩倍；滑動視窗較精準；令牌桶允許短暫突發。",
       "difficulty": 2
     }
   ]
