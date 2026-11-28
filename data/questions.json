@@ -1,6 +1,6 @@
 {
-  "version": 5,
-  "updatedAt": "2026-11-25T09:10:00Z",
+  "version": 6,
+  "updatedAt": "2026-11-28T05:20:00Z",
   "questions": [
     {
       "id": "redis-cache-trio-001",
@@ -1877,6 +1877,190 @@
         "D"
       ],
       "explanation": "錯誤訊息應該統一寫「帳號或密碼錯誤」，不要讓攻擊者知道哪些帳號存在。\n限流演算法：固定視窗最簡單，但視窗交界可能短時間打兩倍；滑動視窗較精準；令牌桶允許短暫突發。",
+      "difficulty": 2
+    },
+    {
+      "id": "jvm-visibility-001",
+      "domain": "java_concurrency_jvm",
+      "sourceTitle": "背景執行緒 while(!stop) 在主執行緒設 stop = true 後仍停不下來，為什麼、怎麼改（可見性）",
+      "type": "single",
+      "stem": "主執行緒 1 秒後把 `stop` 設成 `true`，背景執行緒有時永遠停不下來。最簡單的修法是？\n```java\nstatic boolean stop = false;\n\nnew Thread(() -> {\n    while (!stop) { }\n}).start();\n\nThread.sleep(1000);\nstop = true;\n```",
+      "options": [
+        {
+          "key": "A",
+          "text": "把 `stop` 宣告成 `volatile`"
+        },
+        {
+          "key": "B",
+          "text": "把 `Thread.sleep(1000)` 改長一點"
+        },
+        {
+          "key": "C",
+          "text": "把 `stop` 改成 `Boolean` 包裝類別"
+        },
+        {
+          "key": "D",
+          "text": "把背景執行緒設成 daemon"
+        }
+      ],
+      "answer": [
+        "A"
+      ],
+      "explanation": "這是**可見性**問題：背景執行緒可能一直讀自己 CPU 快取裡的舊值，JIT 也可能把迴圈優化成只讀一次 `stop`。\n`volatile` 保證寫入立刻刷回主記憶體、讀取每次都從主記憶體讀。也可以用 `AtomicBoolean`。",
+      "difficulty": 2
+    },
+    {
+      "id": "jvm-visibility-002",
+      "domain": "java_concurrency_jvm",
+      "sourceTitle": "背景執行緒 while(!stop) 在主執行緒設 stop = true 後仍停不下來，為什麼、怎麼改（可見性）",
+      "type": "multi",
+      "stem": "關於 `volatile`，下列哪些敘述正確？",
+      "options": [
+        {
+          "key": "A",
+          "text": "保證一條執行緒寫入後，其他執行緒能看到最新值（可見性）"
+        },
+        {
+          "key": "B",
+          "text": "保證 `count++` 這類操作不會算錯（原子性）"
+        },
+        {
+          "key": "C",
+          "text": "會禁止相關的指令重排序"
+        },
+        {
+          "key": "D",
+          "text": "適合當作「一個執行緒寫、多個執行緒讀」的開關旗標"
+        }
+      ],
+      "answer": [
+        "A",
+        "C",
+        "D"
+      ],
+      "explanation": "`volatile` 不保證原子性：`count++` 是讀、加、寫三步，照樣會被插隊，要用 `AtomicInteger` 或鎖。\n禁止指令重排也是 DCL 單例要加 `volatile` 的原因。",
+      "difficulty": 2
+    },
+    {
+      "id": "spring-profile-001",
+      "domain": "spring",
+      "sourceTitle": "Spring Boot 不同環境（本機、正式）設定怎麼區分；正式 DB 密碼放哪裡",
+      "type": "single",
+      "stem": "同一份 Spring Boot jar，要在正式環境改用 `application-prod.yml` 的設定，最常見的做法是？",
+      "options": [
+        {
+          "key": "A",
+          "text": "每個環境各自重新打包一份 jar"
+        },
+        {
+          "key": "B",
+          "text": "啟動時指定 `--spring.profiles.active=prod`，或設定環境變數 `SPRING_PROFILES_ACTIVE=prod`"
+        },
+        {
+          "key": "C",
+          "text": "把 `application-prod.yml` 改名成 `application.yml`"
+        },
+        {
+          "key": "D",
+          "text": "在程式碼裡用 if 判斷主機名稱"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "Profile：`application.yml` 放共用設定，`application-dev.yml`、`application-prod.yml` 放各環境的差異。\n啟動時指定要用哪個，同一份 jar 不用重新打包。也可以用 `@Profile(\"dev\")` 讓某些 Bean 只在特定環境建立。",
+      "difficulty": 1
+    },
+    {
+      "id": "spring-profile-002",
+      "domain": "spring",
+      "sourceTitle": "Spring Boot 不同環境（本機、正式）設定怎麼區分；正式 DB 密碼放哪裡",
+      "type": "single",
+      "stem": "正式環境的 DB 密碼，最適合怎麼提供給 Spring Boot？",
+      "options": [
+        {
+          "key": "A",
+          "text": "直接寫在 `application-prod.yml`，跟程式碼一起 commit"
+        },
+        {
+          "key": "B",
+          "text": "設定檔寫 `password: ${DB_PASSWORD}`，由正式機的環境變數或密鑰管理服務提供"
+        },
+        {
+          "key": "C",
+          "text": "寫死在 Java 程式碼的常數裡"
+        },
+        {
+          "key": "D",
+          "text": "放在前端，由使用者輸入"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "密碼 commit 進 repo，只要 repo 外洩或被公開就全部曝光，而且很難從 git 歷史裡清乾淨。\n常見做法：環境變數、Docker / Kubernetes 的 Secret、雲端的密鑰管理服務（如 Vault、AWS Secrets Manager）。本機可用加進 `.gitignore` 的 `application-local.yml`。",
+      "difficulty": 1
+    },
+    {
+      "id": "dp-strategy-001",
+      "domain": "design_patterns_oop",
+      "sourceTitle": "一長串 if-else 依付款方式處理，每加一種就要改方法，怎麼重構（策略模式）",
+      "type": "single",
+      "stem": "下面的程式每新增一種付款方式，就要回來加一個 `else if`。最適合用哪種設計模式重構？\n```java\nif (\"CREDIT_CARD\".equals(type)) { ... }\nelse if (\"LINE_PAY\".equals(type)) { ... }\nelse if (\"ATM\".equals(type)) { ... }\n```",
+      "options": [
+        {
+          "key": "A",
+          "text": "單例模式"
+        },
+        {
+          "key": "B",
+          "text": "策略模式"
+        },
+        {
+          "key": "C",
+          "text": "觀察者模式"
+        },
+        {
+          "key": "D",
+          "text": "建造者模式"
+        }
+      ],
+      "answer": [
+        "B"
+      ],
+      "explanation": "策略模式：每種付款方式各寫一個實作同一個介面（例如 `PaymentStrategy`）的類別，呼叫端依 type 取出對應的策略執行。\n新增付款方式只要多寫一個類別，原本的程式碼不用改，符合**開放封閉原則**（對擴充開放、對修改封閉）。",
+      "difficulty": 1
+    },
+    {
+      "id": "dp-strategy-002",
+      "domain": "design_patterns_oop",
+      "sourceTitle": "一長串 if-else 依付款方式處理，每加一種就要改方法，怎麼重構（策略模式）",
+      "type": "multi",
+      "stem": "在 Spring 裡用策略模式處理多種付款方式，每個實作都是 `@Component`。下列哪些做法正確？",
+      "options": [
+        {
+          "key": "A",
+          "text": "注入 `List<PaymentStrategy>`，啟動時轉成 `Map<type, 策略>` 再依 type 取用"
+        },
+        {
+          "key": "B",
+          "text": "注入 `Map<String, PaymentStrategy>`，key 是 Bean 名稱"
+        },
+        {
+          "key": "C",
+          "text": "每次付款時用 `new CreditCardPayment()` 建立策略"
+        },
+        {
+          "key": "D",
+          "text": "找不到對應的 type 時丟出例外，不要默默略過"
+        }
+      ],
+      "answer": [
+        "A",
+        "B",
+        "D"
+      ],
+      "explanation": "Spring 會把所有實作同一介面的 Bean 一次注入到 List 或 Map，這就是 Spring 版的策略模式，跟「介面有兩個 `@Service` 實作」那題相通。\n自己 `new` 的話，物件不歸 Spring 管理，裡面的依賴也不會被注入。\n只有兩三種、幾乎不會變時，用 if-else 或 switch 也可以，不必過度設計。",
       "difficulty": 2
     }
   ]
